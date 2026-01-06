@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 import Services from "./pages/Services";
 import ServiceDetail from "./pages/ServiceDetail";
 import Dashboard from "./pages/Dashboard";
+import VendorProfile from "./pages/VendorProfile";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -53,6 +54,11 @@ const App = () => (
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/profile" element={
+              <ProtectedRoute allowedRoles={['vendor']}>
+                <VendorProfile />
               </ProtectedRoute>
             } />
 
