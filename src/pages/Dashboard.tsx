@@ -125,10 +125,17 @@ export default function Dashboard() {
                 <MessageSquare className="w-5 h-5 text-primary" />
                 <span className="text-sm font-medium">Messages</span>
               </Link>
-              <Link to="/dashboard" className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                <Settings className="w-5 h-5 text-primary" />
-                <span className="text-sm font-medium">Settings</span>
-              </Link>
+              {user?.role === 'vendor' ? (
+                <Link to="/vendor/profile" className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                  <Settings className="w-5 h-5 text-primary" />
+                  <span className="text-sm font-medium">My Profile</span>
+                </Link>
+              ) : (
+                <Link to="/dashboard" className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                  <Settings className="w-5 h-5 text-primary" />
+                  <span className="text-sm font-medium">Settings</span>
+                </Link>
+              )}
             </div>
           </div>
         </div>
