@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ChevronDown, User, ShoppingCart } from 'lucide-react';
+import { Menu, X, ChevronDown, User, ShoppingCart, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
+import { useMessaging } from '@/contexts/MessagingContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +18,8 @@ export function Navbar() {
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
   const { itemCount } = useCart();
+  const { getUnreadCount } = useMessaging();
+  const unreadCount = getUnreadCount();
 
   const navLinks = [
     { href: '/', label: 'Home' },
@@ -69,6 +72,19 @@ export function Navbar() {
                 )}
               </Button>
             </Link>
+            {/* Messages Icon */}
+            {isAuthenticated && (
+              <Link to="/messages" className="relative">
+                <Button variant="ghost" size="icon">
+                  <MessageSquare className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </Link>
+            )}
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -83,6 +99,9 @@ export function Navbar() {
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard">Dashboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/messages">Messages</Link>
                   </DropdownMenuItem>
                   {user?.role === 'vendor' && (
                     <DropdownMenuItem asChild>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { Star, Clock, Check, ArrowLeft, User, MessageSquare, Shield, ShoppingCart } from 'lucide-react';
+import { Star, Clock, Check, ArrowLeft, User, MessageSquare, Shield, ShoppingCart, Send } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,11 +10,13 @@ import { getServiceById, services } from '@/data/services';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { useCart, PaymentType, SubscriptionPeriod } from '@/contexts/CartContext';
+import { useMessaging } from '@/contexts/MessagingContext';
 import { toast } from 'sonner';
 export default function ServiceDetail() {
   const { id } = useParams();
   const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
+  const { startConversation, setActiveConversation } = useMessaging();
   const navigate = useNavigate();
   const [paymentType, setPaymentType] = useState<PaymentType>('one-time');
   const [subscriptionPeriod, setSubscriptionPeriod] = useState<SubscriptionPeriod>('monthly');
@@ -29,6 +31,19 @@ export default function ServiceDetail() {
     if (!service) return;
     addToCart(service, paymentType, paymentType === 'subscription' ? subscriptionPeriod : undefined);
     navigate('/cart');
+  };
+
+  const handleContactVendor = () => {
+    if (!service) return;
+    const conversation = startConversation(
+      service.vendorId,
+      service.vendorName,
+      service.id,
+      service.title
+    );
+    setActiveConversation(conversation);
+    navigate('/messages');
+    toast.success('Conversation started!');
   };
 
   if (!isAuthenticated) {
@@ -204,8 +219,12 @@ export default function ServiceDetail() {
                 <ShoppingCart className="w-4 h-4 mr-2" />
                 Buy Now
               </Button>
-              <Button variant="outline" size="lg" className="w-full" onClick={handleAddToCart}>
+              <Button variant="outline" size="lg" className="w-full mb-3" onClick={handleAddToCart}>
                 Add to Cart
+              </Button>
+              <Button variant="ghost" size="lg" className="w-full" onClick={handleContactVendor}>
+                <Send className="w-4 h-4 mr-2" />
+                Contact Vendor
               </Button>
 
               <p className="text-xs text-center text-muted-foreground mt-4">
