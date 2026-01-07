@@ -1,15 +1,35 @@
-import { useParams, Link, Navigate } from 'react-router-dom';
-import { Star, Clock, Check, ArrowLeft, User, MessageSquare, Shield } from 'lucide-react';
+import { useState } from 'react';
+import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
+import { Star, Clock, Check, ArrowLeft, User, MessageSquare, Shield, ShoppingCart } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { getServiceById, services } from '@/data/services';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceCard } from '@/components/services/ServiceCard';
-
+import { useCart, PaymentType, SubscriptionPeriod } from '@/contexts/CartContext';
+import { toast } from 'sonner';
 export default function ServiceDetail() {
   const { id } = useParams();
   const { isAuthenticated } = useAuth();
+  const { addToCart } = useCart();
+  const navigate = useNavigate();
+  const [paymentType, setPaymentType] = useState<PaymentType>('one-time');
+  const [subscriptionPeriod, setSubscriptionPeriod] = useState<SubscriptionPeriod>('monthly');
+
+  const handleAddToCart = () => {
+    if (!service) return;
+    addToCart(service, paymentType, paymentType === 'subscription' ? subscriptionPeriod : undefined);
+    toast.success('Added to cart!');
+  };
+
+  const handleBuyNow = () => {
+    if (!service) return;
+    addToCart(service, paymentType, paymentType === 'subscription' ? subscriptionPeriod : undefined);
+    navigate('/cart');
+  };
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: { pathname: `/services/${id}` } }} />;
@@ -116,7 +136,56 @@ export default function ServiceDetail() {
                 </div>
               </div>
 
+              {/* Payment Type Selection */}
               <div className="space-y-4 mb-6">
+                <Label className="text-sm font-medium">Payment Type</Label>
+                <RadioGroup
+                  value={paymentType}
+                  onValueChange={(value) => setPaymentType(value as PaymentType)}
+                  className="space-y-2"
+                >
+                  <div className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer ${paymentType === 'one-time' ? 'border-primary bg-primary/5' : ''}`}>
+                    <RadioGroupItem value="one-time" id="one-time" />
+                    <Label htmlFor="one-time" className="cursor-pointer flex-1">
+                      <span className="font-medium">One-time purchase</span>
+                      <p className="text-xs text-muted-foreground">Pay once, use forever</p>
+                    </Label>
+                  </div>
+                  <div className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer ${paymentType === 'subscription' ? 'border-primary bg-primary/5' : ''}`}>
+                    <RadioGroupItem value="subscription" id="subscription" />
+                    <Label htmlFor="subscription" className="cursor-pointer flex-1">
+                      <span className="font-medium">Subscription</span>
+                      <p className="text-xs text-muted-foreground">Recurring service</p>
+                    </Label>
+                  </div>
+                </RadioGroup>
+
+                {paymentType === 'subscription' && (
+                  <RadioGroup
+                    value={subscriptionPeriod}
+                    onValueChange={(value) => setSubscriptionPeriod(value as SubscriptionPeriod)}
+                    className="grid grid-cols-2 gap-2"
+                  >
+                    <div className={`p-3 border rounded-lg cursor-pointer text-center ${subscriptionPeriod === 'monthly' ? 'border-primary bg-primary/5' : ''}`}>
+                      <RadioGroupItem value="monthly" id="monthly" className="sr-only" />
+                      <Label htmlFor="monthly" className="cursor-pointer">
+                        <p className="font-medium">Monthly</p>
+                        <p className="text-sm text-muted-foreground">${service.price}/mo</p>
+                      </Label>
+                    </div>
+                    <div className={`p-3 border rounded-lg cursor-pointer text-center ${subscriptionPeriod === 'yearly' ? 'border-primary bg-primary/5' : ''}`}>
+                      <RadioGroupItem value="yearly" id="yearly" className="sr-only" />
+                      <Label htmlFor="yearly" className="cursor-pointer">
+                        <p className="font-medium">Yearly</p>
+                        <p className="text-sm text-muted-foreground">${(service.price * 12 * 0.8).toFixed(0)}/yr</p>
+                        <Badge variant="secondary" className="mt-1">Save 20%</Badge>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                )}
+              </div>
+
+              <div className="space-y-3 mb-6">
                 <div className="flex items-center gap-3 text-sm">
                   <Clock className="w-5 h-5 text-muted-foreground" />
                   <span><strong>Delivery:</strong> {service.deliveryTime}</span>
@@ -131,15 +200,16 @@ export default function ServiceDetail() {
                 </div>
               </div>
 
-              <Button variant="hero" size="lg" className="w-full mb-3">
-                Order Now
+              <Button variant="hero" size="lg" className="w-full mb-3" onClick={handleBuyNow}>
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                Buy Now
               </Button>
-              <Button variant="outline" size="lg" className="w-full">
-                Contact Vendor
+              <Button variant="outline" size="lg" className="w-full" onClick={handleAddToCart}>
+                Add to Cart
               </Button>
 
               <p className="text-xs text-center text-muted-foreground mt-4">
-                You won't be charged yet
+                Secure checkout powered by MarketFlow
               </p>
             </div>
           </div>
