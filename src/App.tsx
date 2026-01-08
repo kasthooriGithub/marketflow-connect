@@ -22,6 +22,8 @@ import Services from "./pages/Services";
 import ServiceDetail from "./pages/ServiceDetail";
 import Dashboard from "./pages/Dashboard";
 import VendorProfile from "./pages/VendorProfile";
+import PublicVendorProfile from "./pages/PublicVendorProfile";
+import CategoryVendors from "./pages/CategoryVendors";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
@@ -54,9 +56,11 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
                 
-                {/* Services - public browsing, protected detail view */}
+                {/* Services & Vendors - public browsing */}
                 <Route path="/services" element={<Services />} />
                 <Route path="/services/:id" element={<ServiceDetail />} />
+                <Route path="/category/:categoryId" element={<CategoryVendors />} />
+                <Route path="/vendors/:vendorId" element={<PublicVendorProfile />} />
 
                 {/* Cart & Checkout */}
                 <Route path="/cart" element={<Cart />} />

@@ -100,14 +100,14 @@ export default function Index() {
             {categories.map((category) => (
               <Link
                 key={category.id}
-                to={`/services?category=${category.id}`}
+                to={`/category/${category.id}`}
                 className="group p-6 bg-background rounded-xl border border-border hover:border-primary/30 hover:shadow-lg transition-all duration-300"
               >
                 <div className="text-4xl mb-3">{category.icon}</div>
                 <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
                   {category.name}
                 </h3>
-                <p className="text-sm text-muted-foreground">{category.count} services</p>
+                <p className="text-sm text-muted-foreground">Browse vendors</p>
               </Link>
             ))}
           </div>
