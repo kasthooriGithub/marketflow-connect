@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
+import { VendorServicesProvider } from "@/contexts/VendorServicesContext";
 import { ProtectedRoute } from "@/components/routes/ProtectedRoute";
 import { AdminRoute } from "@/components/routes/AdminRoute";
 
@@ -28,6 +29,10 @@ import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import Messages from "./pages/Messages";
+import Orders from "./pages/Orders";
+import MyServices from "./pages/MyServices";
+import Settings from "./pages/Settings";
+import Earnings from "./pages/Earnings";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -44,91 +49,115 @@ const App = () => (
     <AuthProvider>
       <CartProvider>
         <MessagingProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/how-it-works" element={<HowItWorks />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                
-                {/* Services & Vendors - public browsing */}
-                <Route path="/services" element={<Services />} />
-                <Route path="/services/:id" element={<ServiceDetail />} />
-                <Route path="/category/:categoryId" element={<CategoryVendors />} />
-                <Route path="/vendors/:vendorId" element={<PublicVendorProfile />} />
+          <VendorServicesProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/how-it-works" element={<HowItWorks />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  
+                  {/* Services & Vendors - public browsing */}
+                  <Route path="/services" element={<Services />} />
+                  <Route path="/services/:id" element={<ServiceDetail />} />
+                  <Route path="/category/:categoryId" element={<CategoryVendors />} />
+                  <Route path="/vendors/:vendorId" element={<PublicVendorProfile />} />
 
-                {/* Cart & Checkout */}
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/checkout" element={
-                  <ProtectedRoute>
-                    <Checkout />
-                  </ProtectedRoute>
-                } />
-                <Route path="/order-confirmation/:orderId" element={
-                  <ProtectedRoute>
-                    <OrderConfirmation />
-                  </ProtectedRoute>
-                } />
+                  {/* Cart & Checkout */}
+                  <Route path="/cart" element={<Cart />} />
+                  <Route path="/checkout" element={
+                    <ProtectedRoute>
+                      <Checkout />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/order-confirmation/:orderId" element={
+                    <ProtectedRoute>
+                      <OrderConfirmation />
+                    </ProtectedRoute>
+                  } />
 
-                {/* Protected Routes */}
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/messages" element={
-                  <ProtectedRoute>
-                    <Messages />
-                  </ProtectedRoute>
-                } />
-                <Route path="/vendor/profile" element={
-                  <ProtectedRoute allowedRoles={['vendor']}>
-                    <VendorProfile />
-                  </ProtectedRoute>
-                } />
+                  {/* Protected Routes */}
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/messages" element={
+                    <ProtectedRoute>
+                      <Messages />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/orders" element={
+                    <ProtectedRoute>
+                      <Orders />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/settings" element={
+                    <ProtectedRoute>
+                      <Settings />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Vendor Routes */}
+                  <Route path="/vendor/profile" element={
+                    <ProtectedRoute allowedRoles={['vendor']}>
+                      <VendorProfile />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/my-services" element={
+                    <ProtectedRoute allowedRoles={['vendor']}>
+                      <MyServices />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/earnings" element={
+                    <ProtectedRoute allowedRoles={['vendor']}>
+                      <Earnings />
+                    </ProtectedRoute>
+                  } />
 
-              {/* Admin Routes */}
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin/dashboard" element={
-                <AdminRoute>
-                  <AdminDashboard />
-                </AdminRoute>
-              } />
-              <Route path="/admin/users" element={
-                <AdminRoute>
-                  <AdminUsers />
-                </AdminRoute>
-              } />
-              <Route path="/admin/vendors" element={
-                <AdminRoute>
-                  <AdminVendors />
-                </AdminRoute>
-              } />
-              <Route path="/admin/services" element={
-                <AdminRoute>
-                  <AdminServices />
-                </AdminRoute>
-              } />
-              <Route path="/admin/settings" element={
-                <AdminRoute>
-                  <AdminSettings />
-                </AdminRoute>
-              } />
+                  {/* Admin Routes */}
+                  <Route path="/admin/login" element={<AdminLogin />} />
+                  <Route path="/admin/dashboard" element={
+                    <AdminRoute>
+                      <AdminDashboard />
+                    </AdminRoute>
+                  } />
+                  <Route path="/admin/users" element={
+                    <AdminRoute>
+                      <AdminUsers />
+                    </AdminRoute>
+                  } />
+                  <Route path="/admin/vendors" element={
+                    <AdminRoute>
+                      <AdminVendors />
+                    </AdminRoute>
+                  } />
+                  <Route path="/admin/services" element={
+                    <AdminRoute>
+                      <AdminServices />
+                    </AdminRoute>
+                  } />
+                  <Route path="/admin/settings" element={
+                    <AdminRoute>
+                      <AdminSettings />
+                    </AdminRoute>
+                  } />
 
-              {/* Catch-all */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </MessagingProvider>
-    </CartProvider>
-  </AuthProvider>
-</QueryClientProvider>
+                  {/* Catch-all */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </VendorServicesProvider>
+        </MessagingProvider>
+      </CartProvider>
+    </AuthProvider>
+  </QueryClientProvider>
 );
 
 export default App;
