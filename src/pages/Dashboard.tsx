@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
+import { AddServiceModal } from '@/components/vendor/AddServiceModal';
 import { 
   LayoutDashboard, 
   ShoppingBag, 
@@ -12,11 +14,13 @@ import {
   Package,
   TrendingUp,
   Users,
-  DollarSign
+  DollarSign,
+  Briefcase
 } from 'lucide-react';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
 
   const clientStats = [
     { label: 'Active Orders', value: '3', icon: ShoppingBag },
@@ -33,10 +37,27 @@ export default function Dashboard() {
 
   const stats = user?.role === 'vendor' ? vendorStats : clientStats;
 
+  const vendorQuickLinks = [
+    { to: '/my-services', label: 'My Services', icon: Briefcase },
+    { to: '/orders', label: 'Orders', icon: ShoppingBag },
+    { to: '/messages', label: 'Messages', icon: MessageSquare },
+    { to: '/earnings', label: 'Earnings', icon: DollarSign },
+    { to: '/settings', label: 'Settings', icon: Settings },
+    { to: '/vendor/profile', label: 'My Profile', icon: Users },
+  ];
+
+  const clientQuickLinks = [
+    { to: '/services', label: 'Browse Services', icon: LayoutDashboard },
+    { to: '/orders', label: 'My Orders', icon: ShoppingBag },
+    { to: '/messages', label: 'Messages', icon: MessageSquare },
+    { to: '/settings', label: 'Settings', icon: Settings },
+  ];
+
+  const quickLinks = user?.role === 'vendor' ? vendorQuickLinks : clientQuickLinks;
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-12">
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground mb-2">
@@ -49,14 +70,13 @@ export default function Dashboard() {
             </p>
           </div>
           {user?.role === 'vendor' && (
-            <Button variant="gradient" className="mt-4 md:mt-0">
+            <Button variant="gradient" className="mt-4 md:mt-0" onClick={() => setIsAddServiceOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Add New Service
             </Button>
           )}
         </div>
 
-        {/* Stats Grid */}
         <div className={`grid gap-6 mb-8 ${user?.role === 'vendor' ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
           {stats.map((stat) => (
             <div key={stat.label} className="bg-card rounded-xl border border-border p-6">
@@ -73,9 +93,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Quick Actions */}
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Recent Activity */}
           <div className="bg-card rounded-xl border border-border p-6">
             <h2 className="font-display text-lg font-semibold mb-4">Recent Activity</h2>
             <div className="space-y-4">
@@ -109,37 +127,30 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Quick Links */}
           <div className="bg-card rounded-xl border border-border p-6">
             <h2 className="font-display text-lg font-semibold mb-4">Quick Links</h2>
             <div className="grid grid-cols-2 gap-3">
-              <Link to="/services" className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                <LayoutDashboard className="w-5 h-5 text-primary" />
-                <span className="text-sm font-medium">Browse Services</span>
-              </Link>
-              <Link to="/dashboard" className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                <ShoppingBag className="w-5 h-5 text-primary" />
-                <span className="text-sm font-medium">My Orders</span>
-              </Link>
-              <Link to="/dashboard" className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                <MessageSquare className="w-5 h-5 text-primary" />
-                <span className="text-sm font-medium">Messages</span>
-              </Link>
-              {user?.role === 'vendor' ? (
-                <Link to="/vendor/profile" className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                  <Settings className="w-5 h-5 text-primary" />
-                  <span className="text-sm font-medium">My Profile</span>
+              {quickLinks.map((link) => (
+                <Link 
+                  key={link.to} 
+                  to={link.to} 
+                  className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                >
+                  <link.icon className="w-5 h-5 text-primary" />
+                  <span className="text-sm font-medium">{link.label}</span>
                 </Link>
-              ) : (
-                <Link to="/dashboard" className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                  <Settings className="w-5 h-5 text-primary" />
-                  <span className="text-sm font-medium">Settings</span>
-                </Link>
-              )}
+              ))}
             </div>
           </div>
         </div>
       </div>
+
+      {user?.role === 'vendor' && (
+        <AddServiceModal 
+          open={isAddServiceOpen} 
+          onOpenChange={setIsAddServiceOpen} 
+        />
+      )}
     </Layout>
   );
 }
