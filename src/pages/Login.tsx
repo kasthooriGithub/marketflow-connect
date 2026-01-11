@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { getDefaultRedirectPath, isNeutralEntryRoute } from '@/lib/auth-redirects';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -14,18 +13,10 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, user, isAuthenticated } = useAuth();
+  const { login } = useAuth();
   const { toast } = useToast();
 
-  const intendedPath = (location.state as { from?: { pathname: string } })?.from?.pathname;
-
-  // Redirect already authenticated users based on their role
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      const redirectPath = getDefaultRedirectPath(user.role);
-      navigate(redirectPath, { replace: true });
-    }
-  }, [isAuthenticated, user, navigate]);
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,15 +29,7 @@ export default function Login() {
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
       });
-      
-      // Use role-based redirect unless user was trying to access a specific protected page
-      const storedUser = JSON.parse(localStorage.getItem('marketflow_user') || '{}');
-      const roleBasedPath = getDefaultRedirectPath(storedUser.role);
-      const redirectPath = intendedPath && !isNeutralEntryRoute(intendedPath) 
-        ? intendedPath 
-        : roleBasedPath;
-      
-      navigate(redirectPath, { replace: true });
+      navigate(from, { replace: true });
     } else {
       toast({
         title: 'Login failed',

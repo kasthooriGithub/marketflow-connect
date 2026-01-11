@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useVendorServices, Service } from '@/contexts/VendorServicesContext';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { services } from '@/data/services';
 import { getVendorByEmail, Vendor } from '@/data/vendors';
 import { ServiceCard } from '@/components/services/ServiceCard';
-import { AddServiceModal } from '@/components/vendor/AddServiceModal';
 import { 
   MapPin, 
   Calendar, 
@@ -169,22 +168,14 @@ function ReviewsSection({ vendor }: { vendor: Vendor }) {
   );
 }
 
-interface ServicesSectionProps {
-  vendorId: string;
-  isOwner: boolean;
-  onAddService: () => void;
-  onEditService: (service: Service) => void;
-}
-
-function ServicesSection({ vendorId, isOwner, onAddService, onEditService }: ServicesSectionProps) {
-  const { getServicesByVendor } = useVendorServices();
-  const vendorServices = getServicesByVendor(vendorId);
+function ServicesSection({ vendorId, isOwner }: { vendorId: string; isOwner: boolean }) {
+  const vendorServices = services.filter(s => s.vendorId === vendorId);
 
   return (
     <div className="space-y-6">
       {isOwner && (
         <div className="flex justify-end">
-          <Button variant="gradient" size="sm" onClick={onAddService}>
+          <Button variant="gradient" size="sm">
             <Plus className="w-4 h-4 mr-2" />
             Add New Service
           </Button>
@@ -198,8 +189,11 @@ function ServicesSection({ vendorId, isOwner, onAddService, onEditService }: Ser
               <ServiceCard service={service} />
               {isOwner && (
                 <div className="absolute top-4 right-4 flex gap-2">
-                  <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => onEditService(service)}>
+                  <Button size="icon" variant="secondary" className="h-8 w-8">
                     <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button size="icon" variant="destructive" className="h-8 w-8">
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
               )}
@@ -214,7 +208,7 @@ function ServicesSection({ vendorId, isOwner, onAddService, onEditService }: Ser
             {isOwner ? 'Start selling by adding your first service' : 'This vendor hasn\'t listed any services yet'}
           </p>
           {isOwner && (
-            <Button variant="gradient" onClick={onAddService}>
+            <Button variant="gradient">
               <Plus className="w-4 h-4 mr-2" />
               Add Your First Service
             </Button>
@@ -228,25 +222,6 @@ function ServicesSection({ vendorId, isOwner, onAddService, onEditService }: Ser
 export default function VendorProfile() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('portfolio');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [editingService, setEditingService] = useState<Service | null>(null);
-
-  const handleAddService = () => {
-    setEditingService(null);
-    setIsAddModalOpen(true);
-  };
-
-  const handleEditService = (service: Service) => {
-    setEditingService(service);
-    setIsAddModalOpen(true);
-  };
-
-  const handleModalClose = (open: boolean) => {
-    setIsAddModalOpen(open);
-    if (!open) {
-      setEditingService(null);
-    }
-  };
   
   // For demo, show the logged-in vendor's profile or a default vendor
   const vendor = user?.email ? getVendorByEmail(user.email) : null;
@@ -298,7 +273,6 @@ export default function VendorProfile() {
   };
 
   return (
-    <>
     <Layout>
       <div className="min-h-screen bg-background">
         {/* Cover Image */}
@@ -464,12 +438,7 @@ export default function VendorProfile() {
             </TabsContent>
 
             <TabsContent value="services" className="mt-6">
-              <ServicesSection 
-                vendorId={displayVendor.id} 
-                isOwner={isOwner} 
-                onAddService={handleAddService}
-                onEditService={handleEditService}
-              />
+              <ServicesSection vendorId={displayVendor.id} isOwner={isOwner} />
             </TabsContent>
 
             <TabsContent value="reviews" className="mt-6">
@@ -479,12 +448,5 @@ export default function VendorProfile() {
         </div>
       </div>
     </Layout>
-
-    <AddServiceModal 
-      open={isAddModalOpen} 
-      onOpenChange={handleModalClose}
-      editService={editingService}
-    />
-  </>
   );
 }

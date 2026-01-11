@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -19,16 +19,8 @@ import {
 } from 'lucide-react';
 
 export default function Dashboard() {
-  const { user, isAuthenticated, isLoading } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
-
-  // Redirect clients to services page - dashboard is primarily for vendors
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && user?.role === 'client') {
-      navigate('/services', { replace: true });
-    }
-  }, [user, isAuthenticated, isLoading, navigate]);
 
   const clientStats = [
     { label: 'Active Orders', value: '3', icon: ShoppingBag },

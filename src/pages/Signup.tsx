@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Building2, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { getDefaultRedirectPath } from '@/lib/auth-redirects';
 
 export default function Signup() {
   const [email, setEmail] = useState('');
@@ -16,16 +15,8 @@ export default function Signup() {
   const [role, setRole] = useState<'client' | 'vendor'>('client');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { signup, user, isAuthenticated } = useAuth();
+  const { signup } = useAuth();
   const { toast } = useToast();
-
-  // Redirect already authenticated users based on their role
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      const redirectPath = getDefaultRedirectPath(user.role);
-      navigate(redirectPath, { replace: true });
-    }
-  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,10 +29,7 @@ export default function Signup() {
         title: 'Account created!',
         description: 'Welcome to MarketFlow.',
       });
-      
-      // Role-based redirect after signup
-      const redirectPath = getDefaultRedirectPath(role);
-      navigate(redirectPath, { replace: true });
+      navigate('/dashboard', { replace: true });
     } else {
       toast({
         title: 'Signup failed',

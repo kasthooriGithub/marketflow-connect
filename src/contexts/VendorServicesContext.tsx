@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Service, services as initialServices, categories } from '@/data/services';
-
-export type { Service };
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface NewService {
