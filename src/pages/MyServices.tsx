@@ -34,12 +34,27 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+import { Service } from '@/data/services';
+
 export default function MyServices() {
   const { user } = useAuth();
   const { vendorServices, deleteService, categories } = useVendorServices();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingService, setEditingService] = useState<Service | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
+
+  const handleEditClick = (service: Service) => {
+    setEditingService(service);
+    setIsAddModalOpen(true);
+  };
+
+  const handleModalClose = (open: boolean) => {
+    setIsAddModalOpen(open);
+    if (!open) {
+      setEditingService(null);
+    }
+  };
 
   const handleDeleteClick = (serviceId: string) => {
     setServiceToDelete(serviceId);
@@ -123,7 +138,7 @@ export default function MyServices() {
                           View Service
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEditClick(service)}>
                         <Edit className="w-4 h-4 mr-2" />
                         Edit Service
                       </DropdownMenuItem>
@@ -193,10 +208,11 @@ export default function MyServices() {
           </div>
         )}
 
-        {/* Add Service Modal */}
+        {/* Add/Edit Service Modal */}
         <AddServiceModal 
           open={isAddModalOpen} 
-          onOpenChange={setIsAddModalOpen} 
+          onOpenChange={handleModalClose}
+          editService={editingService}
         />
 
         {/* Delete Confirmation Dialog */}

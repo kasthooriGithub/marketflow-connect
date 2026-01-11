@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Plus, Trash2 } from 'lucide-react';
 import {
@@ -22,11 +22,13 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useVendorServices, NewService } from '@/contexts/VendorServicesContext';
+import { Service } from '@/data/services';
 import { toast } from 'sonner';
 
 interface AddServiceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editService?: Service | null;
 }
 
 const deliveryTimeOptions = [
@@ -40,25 +42,36 @@ const deliveryTimeOptions = [
   'Ongoing',
 ];
 
-export function AddServiceModal({ open, onOpenChange }: AddServiceModalProps) {
-  const navigate = useNavigate();
-  const { addService, categories } = useVendorServices();
-  
-  const [formData, setFormData] = useState<NewService>({
-    title: '',
-    description: '',
-    longDescription: '',
-    category: '',
-    price: 0,
-    priceType: 'one-time',
-    deliveryTime: '3-5 days',
-    features: [''],
-    tags: [],
-    available: true,
-  });
+const getInitialFormData = (service?: Service | null): NewService => ({
+  title: service?.title || '',
+  description: service?.description || '',
+  longDescription: service?.longDescription || '',
+  category: service?.category || '',
+  price: service?.price || 0,
+  priceType: service?.priceType || 'one-time',
+  deliveryTime: service?.deliveryTime || '3-5 days',
+  features: service?.features?.length ? [...service.features] : [''],
+  tags: service?.tags?.length ? [...service.tags] : [],
+  available: true,
+});
 
+export function AddServiceModal({ open, onOpenChange, editService }: AddServiceModalProps) {
+  const navigate = useNavigate();
+  const { addService, updateService, categories } = useVendorServices();
+  
+  const [formData, setFormData] = useState<NewService>(() => getInitialFormData(editService));
   const [tagInput, setTagInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isEditMode = !!editService;
+
+  // Reset form when modal opens/closes or editService changes
+  useEffect(() => {
+    if (open) {
+      setFormData(getInitialFormData(editService));
+      setTagInput('');
+    }
+  }, [open, editService]);
 
   const handleInputChange = (field: keyof NewService, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -124,35 +137,24 @@ export function AddServiceModal({ open, onOpenChange }: AddServiceModalProps) {
         return;
       }
 
-      const serviceToAdd = {
+      const serviceData = {
         ...formData,
         features: cleanedFeatures,
         longDescription: formData.longDescription || formData.description,
       };
 
-      const newService = addService(serviceToAdd);
-      
-      toast.success('Service created successfully!');
-      onOpenChange(false);
-      
-      // Reset form
-      setFormData({
-        title: '',
-        description: '',
-        longDescription: '',
-        category: '',
-        price: 0,
-        priceType: 'one-time',
-        deliveryTime: '3-5 days',
-        features: [''],
-        tags: [],
-        available: true,
-      });
-
-      // Navigate to the new service
-      navigate(`/services/${newService.id}`);
+      if (isEditMode && editService) {
+        updateService(editService.id, serviceData);
+        toast.success('Service updated successfully!');
+        onOpenChange(false);
+      } else {
+        const newService = addService(serviceData);
+        toast.success('Service created successfully!');
+        onOpenChange(false);
+        navigate(`/services/${newService.id}`);
+      }
     } catch (error) {
-      toast.error('Failed to create service. Please try again.');
+      toast.error(isEditMode ? 'Failed to update service.' : 'Failed to create service.');
     } finally {
       setIsSubmitting(false);
     }
@@ -162,9 +164,13 @@ export function AddServiceModal({ open, onOpenChange }: AddServiceModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl">Add New Service</DialogTitle>
+          <DialogTitle className="font-display text-xl">
+            {isEditMode ? 'Edit Service' : 'Add New Service'}
+          </DialogTitle>
           <DialogDescription>
-            Create a new service listing for your clients to purchase
+            {isEditMode 
+              ? 'Update your service listing details' 
+              : 'Create a new service listing for your clients to purchase'}
           </DialogDescription>
         </DialogHeader>
 
@@ -376,7 +382,9 @@ export function AddServiceModal({ open, onOpenChange }: AddServiceModalProps) {
               Cancel
             </Button>
             <Button type="submit" variant="hero" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create Service'}
+              {isSubmitting 
+                ? (isEditMode ? 'Saving...' : 'Creating...') 
+                : (isEditMode ? 'Save Changes' : 'Create Service')}
             </Button>
           </div>
         </form>
