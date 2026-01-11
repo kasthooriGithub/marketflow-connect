@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { getDefaultRedirectPath } from '@/lib/auth-redirects';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -23,11 +24,9 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) {
-    // Redirect non-admin users trying to access admin routes
-    if (user.role !== 'admin') {
-      return <Navigate to="/dashboard" replace />;
-    }
-    return <Navigate to="/" replace />;
+    // Redirect to role-appropriate default page
+    const redirectPath = getDefaultRedirectPath(user.role);
+    return <Navigate to={redirectPath} replace />;
   }
 
   return <>{children}</>;
