@@ -101,9 +101,6 @@ export function Navbar() {
                     <Link to="/dashboard">Dashboard</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/orders">Orders</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
                     <Link to="/messages">Messages</Link>
                   </DropdownMenuItem>
                   {user?.role === 'vendor' && (
