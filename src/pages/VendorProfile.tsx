@@ -7,6 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { services } from '@/data/services';
 import { getVendorByEmail, Vendor } from '@/data/vendors';
 import { ServiceCard } from '@/components/services/ServiceCard';
+import { AddServiceModal } from '@/components/vendor/AddServiceModal';
+import { AddPortfolioModal, PortfolioItem } from '@/components/vendor/AddPortfolioModal';
+import { useVendorServices } from '@/contexts/VendorServicesContext';
+import { Service } from '@/data/services';
 import { 
   MapPin, 
   Calendar, 
@@ -22,12 +26,20 @@ import {
   Trash2
 } from 'lucide-react';
 
-function PortfolioSection({ vendor, isOwner }: { vendor: Vendor; isOwner: boolean }) {
+function PortfolioSection({ 
+  vendor, 
+  isOwner, 
+  onAddPortfolio 
+}: { 
+  vendor: Vendor; 
+  isOwner: boolean;
+  onAddPortfolio: () => void;
+}) {
   return (
     <div className="space-y-6">
       {isOwner && (
         <div className="flex justify-end">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={onAddPortfolio}>
             <Plus className="w-4 h-4 mr-2" />
             Add Portfolio Item
           </Button>
@@ -74,7 +86,7 @@ function PortfolioSection({ vendor, isOwner }: { vendor: Vendor; isOwner: boolea
             {isOwner ? 'Showcase your best work to attract clients' : 'This vendor hasn\'t added portfolio items yet'}
           </p>
           {isOwner && (
-            <Button variant="outline">
+            <Button variant="outline" onClick={onAddPortfolio}>
               <Plus className="w-4 h-4 mr-2" />
               Add Your First Project
             </Button>
@@ -168,23 +180,36 @@ function ReviewsSection({ vendor }: { vendor: Vendor }) {
   );
 }
 
-function ServicesSection({ vendorId, isOwner }: { vendorId: string; isOwner: boolean }) {
-  const vendorServices = services.filter(s => s.vendorId === vendorId);
+function ServicesSection({ 
+  vendorId, 
+  isOwner,
+  onAddService 
+}: { 
+  vendorId: string; 
+  isOwner: boolean;
+  onAddService: () => void;
+}) {
+  const { vendorServices, allServices } = useVendorServices();
+  
+  // Combine static services and vendor-added services
+  const staticVendorServices = services.filter(s => s.vendorId === vendorId);
+  const contextVendorServices = vendorServices.filter(s => s.vendorId === vendorId);
+  const allVendorServices = [...staticVendorServices, ...contextVendorServices];
 
   return (
     <div className="space-y-6">
       {isOwner && (
         <div className="flex justify-end">
-          <Button variant="gradient" size="sm">
+          <Button variant="gradient" size="sm" onClick={onAddService}>
             <Plus className="w-4 h-4 mr-2" />
             Add New Service
           </Button>
         </div>
       )}
 
-      {vendorServices.length > 0 ? (
+      {allVendorServices.length > 0 ? (
         <div className="grid md:grid-cols-2 gap-6">
-          {vendorServices.map((service) => (
+          {allVendorServices.map((service) => (
             <div key={service.id} className="relative">
               <ServiceCard service={service} />
               {isOwner && (
@@ -208,7 +233,7 @@ function ServicesSection({ vendorId, isOwner }: { vendorId: string; isOwner: boo
             {isOwner ? 'Start selling by adding your first service' : 'This vendor hasn\'t listed any services yet'}
           </p>
           {isOwner && (
-            <Button variant="gradient">
+            <Button variant="gradient" onClick={onAddService}>
               <Plus className="w-4 h-4 mr-2" />
               Add Your First Service
             </Button>
@@ -222,10 +247,25 @@ function ServicesSection({ vendorId, isOwner }: { vendorId: string; isOwner: boo
 export default function VendorProfile() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('portfolio');
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
+  const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
   
   // For demo, show the logged-in vendor's profile or a default vendor
   const vendor = user?.email ? getVendorByEmail(user.email) : null;
   const isOwner = user?.role === 'vendor' && vendor?.email === user?.email;
+
+  const handleAddPortfolio = () => {
+    setIsPortfolioModalOpen(true);
+  };
+
+  const handleAddService = () => {
+    setIsServiceModalOpen(true);
+  };
+
+  const handleSavePortfolioItem = (item: PortfolioItem) => {
+    setPortfolioItems(prev => [...prev, item]);
+  };
 
   // Default vendor data for demo
   const displayVendor: Vendor = vendor || {
@@ -434,11 +474,22 @@ export default function VendorProfile() {
             </TabsList>
 
             <TabsContent value="portfolio" className="mt-6">
-              <PortfolioSection vendor={displayVendor} isOwner={isOwner} />
+              <PortfolioSection 
+                vendor={{
+                  ...displayVendor,
+                  portfolio: [...displayVendor.portfolio, ...portfolioItems]
+                }} 
+                isOwner={isOwner} 
+                onAddPortfolio={handleAddPortfolio}
+              />
             </TabsContent>
 
             <TabsContent value="services" className="mt-6">
-              <ServicesSection vendorId={displayVendor.id} isOwner={isOwner} />
+              <ServicesSection 
+                vendorId={displayVendor.id} 
+                isOwner={isOwner} 
+                onAddService={handleAddService}
+              />
             </TabsContent>
 
             <TabsContent value="reviews" className="mt-6">
@@ -447,6 +498,17 @@ export default function VendorProfile() {
           </Tabs>
         </div>
       </div>
+
+      {/* Modals */}
+      <AddServiceModal 
+        open={isServiceModalOpen} 
+        onOpenChange={setIsServiceModalOpen} 
+      />
+      <AddPortfolioModal
+        open={isPortfolioModalOpen}
+        onOpenChange={setIsPortfolioModalOpen}
+        onSave={handleSavePortfolioItem}
+      />
     </Layout>
   );
 }
