@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useVendorPortfolio } from '@/contexts/VendorPortfolioContext';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { services } from '@/data/services';
-import { getVendorByEmail, Vendor } from '@/data/vendors';
+import { getVendorByEmail, Vendor, PortfolioItem } from '@/data/vendors';
 import { ServiceCard } from '@/components/services/ServiceCard';
+import { AddPortfolioModal } from '@/components/vendor/AddPortfolioModal';
 import { 
   MapPin, 
   Calendar, 
@@ -21,13 +23,34 @@ import {
   Image as ImageIcon,
   Trash2
 } from 'lucide-react';
+import { toast } from 'sonner';
 
-function PortfolioSection({ vendor, isOwner }: { vendor: Vendor; isOwner: boolean }) {
+
+interface PortfolioSectionProps {
+  vendor: Vendor;
+  isOwner: boolean;
+  customPortfolioItems: PortfolioItem[];
+  onAddClick: () => void;
+  onEditClick: (item: PortfolioItem) => void;
+  onDeleteClick: (id: string) => void;
+}
+
+function PortfolioSection({ 
+  vendor, 
+  isOwner, 
+  customPortfolioItems, 
+  onAddClick,
+  onEditClick,
+  onDeleteClick 
+}: PortfolioSectionProps) {
+  // Combine vendor's default portfolio with custom items
+  const allPortfolioItems = [...vendor.portfolio, ...customPortfolioItems];
+
   return (
     <div className="space-y-6">
       {isOwner && (
         <div className="flex justify-end">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={onAddClick}>
             <Plus className="w-4 h-4 mr-2" />
             Add Portfolio Item
           </Button>
@@ -35,38 +58,50 @@ function PortfolioSection({ vendor, isOwner }: { vendor: Vendor; isOwner: boolea
       )}
       
       <div className="grid md:grid-cols-2 gap-6">
-        {vendor.portfolio.map((item) => (
-          <div key={item.id} className="group relative bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all">
-            <div className="aspect-video bg-muted relative">
-              <img 
-                src={item.image} 
-                alt={item.title}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                <Button size="sm" variant="secondary">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  View
-                </Button>
-                {isOwner && (
-                  <Button size="sm" variant="destructive">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                )}
+        {allPortfolioItems.map((item) => {
+          const isCustomItem = item.id.startsWith('portfolio_');
+          return (
+            <div key={item.id} className="group relative bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all">
+              <div className="aspect-video bg-muted relative">
+                <img 
+                  src={item.image} 
+                  alt={item.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                  {item.link && (
+                    <Button size="sm" variant="secondary" asChild>
+                      <a href={item.link} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        View
+                      </a>
+                    </Button>
+                  )}
+                  {isOwner && isCustomItem && (
+                    <>
+                      <Button size="sm" variant="secondary" onClick={() => onEditClick(item)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => onDeleteClick(item.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="p-4">
+                <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">
+                  {item.category}
+                </span>
+                <h3 className="font-display font-semibold text-foreground mt-2">{item.title}</h3>
+                <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
               </div>
             </div>
-            <div className="p-4">
-              <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">
-                {item.category}
-              </span>
-              <h3 className="font-display font-semibold text-foreground mt-2">{item.title}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {vendor.portfolio.length === 0 && (
+      {allPortfolioItems.length === 0 && (
         <div className="text-center py-12 bg-muted/30 rounded-xl border border-dashed border-border">
           <ImageIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="font-semibold text-foreground mb-2">No portfolio items yet</h3>
@@ -74,7 +109,7 @@ function PortfolioSection({ vendor, isOwner }: { vendor: Vendor; isOwner: boolea
             {isOwner ? 'Showcase your best work to attract clients' : 'This vendor hasn\'t added portfolio items yet'}
           </p>
           {isOwner && (
-            <Button variant="outline">
+            <Button variant="outline" onClick={onAddClick}>
               <Plus className="w-4 h-4 mr-2" />
               Add Your First Project
             </Button>
@@ -221,7 +256,10 @@ function ServicesSection({ vendorId, isOwner }: { vendorId: string; isOwner: boo
 
 export default function VendorProfile() {
   const { user } = useAuth();
+  const { portfolioItems, addPortfolioItem, updatePortfolioItem, deletePortfolioItem } = useVendorPortfolio();
   const [activeTab, setActiveTab] = useState('portfolio');
+  const [portfolioModalOpen, setPortfolioModalOpen] = useState(false);
+  const [editingPortfolioItem, setEditingPortfolioItem] = useState<PortfolioItem | null>(null);
   
   // For demo, show the logged-in vendor's profile or a default vendor
   const vendor = user?.email ? getVendorByEmail(user.email) : null;
@@ -434,7 +472,23 @@ export default function VendorProfile() {
             </TabsList>
 
             <TabsContent value="portfolio" className="mt-6">
-              <PortfolioSection vendor={displayVendor} isOwner={isOwner} />
+              <PortfolioSection 
+                vendor={displayVendor} 
+                isOwner={isOwner} 
+                customPortfolioItems={portfolioItems}
+                onAddClick={() => {
+                  setEditingPortfolioItem(null);
+                  setPortfolioModalOpen(true);
+                }}
+                onEditClick={(item) => {
+                  setEditingPortfolioItem(item);
+                  setPortfolioModalOpen(true);
+                }}
+                onDeleteClick={(id) => {
+                  deletePortfolioItem(id);
+                  toast.success('Portfolio item deleted');
+                }}
+              />
             </TabsContent>
 
             <TabsContent value="services" className="mt-6">
@@ -447,6 +501,20 @@ export default function VendorProfile() {
           </Tabs>
         </div>
       </div>
+
+      {/* Portfolio Modal */}
+      <AddPortfolioModal
+        open={portfolioModalOpen}
+        onOpenChange={setPortfolioModalOpen}
+        editItem={editingPortfolioItem}
+        onSave={(item) => {
+          if (editingPortfolioItem) {
+            updatePortfolioItem(editingPortfolioItem.id, item);
+          } else {
+            addPortfolioItem(item);
+          }
+        }}
+      />
     </Layout>
   );
 }

@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
 import { VendorServicesProvider } from "@/contexts/VendorServicesContext";
+import { VendorPortfolioProvider } from "@/contexts/VendorPortfolioContext";
 import { ProtectedRoute } from "@/components/routes/ProtectedRoute";
 import { AdminRoute } from "@/components/routes/AdminRoute";
 
@@ -50,9 +51,10 @@ const App = () => (
       <CartProvider>
         <MessagingProvider>
           <VendorServicesProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
+            <VendorPortfolioProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
               <BrowserRouter>
                 <Routes>
                   {/* Public Routes */}
@@ -153,11 +155,12 @@ const App = () => (
                 </Routes>
               </BrowserRouter>
             </TooltipProvider>
-          </VendorServicesProvider>
-        </MessagingProvider>
-      </CartProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+          </VendorPortfolioProvider>
+        </VendorServicesProvider>
+      </MessagingProvider>
+    </CartProvider>
+  </AuthProvider>
+</QueryClientProvider>
 );
 
 export default App;
