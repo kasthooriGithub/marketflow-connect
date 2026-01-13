@@ -3,12 +3,15 @@ import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { orders } from '@/data/orders';
-import { 
-  Package, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+// import { orders } from '@/data/orders'; 
+import { orderService } from '@/services/orderService';
+import { useEffect, useState } from 'react';
+import { Order as FirestoreOrder } from '@/types/firebase';
+import {
+  Package,
+  Clock,
+  CheckCircle,
+  XCircle,
   AlertCircle,
   ArrowLeft,
   MessageSquare,
@@ -22,13 +25,51 @@ const statusConfig = {
   cancelled: { label: 'Cancelled', icon: XCircle, color: 'bg-red-500/10 text-red-600 border-red-500/20' },
 };
 
+// Extended UI Order type
+interface UIOrder extends FirestoreOrder {
+  serviceName: string;
+  clientName: string;
+  vendorName: string;
+  expectedDelivery?: string;
+}
+
 export default function Orders() {
   const { user } = useAuth();
-  
-  // Filter orders based on user role
-  const userOrders = user?.role === 'vendor'
-    ? orders.filter(o => o.vendorId === user.id || o.vendorName === user.name)
-    : orders.filter(o => o.clientId === user?.id || o.clientName === user?.name);
+  const [userOrders, setUserOrders] = useState<UIOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchOrders() {
+      if (!user) return;
+      setIsLoading(true);
+      try {
+        let fetchedOrders: FirestoreOrder[] = [];
+        if (user.role === 'vendor') {
+          fetchedOrders = await orderService.getOrdersByVendor(user.id);
+        } else {
+          fetchedOrders = await orderService.getOrdersByClient(user.id);
+        }
+
+        // Map to UI Order
+        // Ideally we fetch related services/users to get names.
+        // For now, using placeholders to avoid complex chaining in this step.
+        const mapped: UIOrder[] = fetchedOrders.map(o => ({
+          ...o,
+          serviceName: 'Service', // Placeholder
+          clientName: 'Client', // Placeholder
+          vendorName: 'Vendor', // Placeholder
+          expectedDelivery: 'TBD'
+        }));
+        setUserOrders(mapped);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchOrders();
+  }, [user]);
 
   return (
     <Layout>
@@ -36,8 +77,8 @@ export default function Orders() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <Link 
-              to="/dashboard" 
+            <Link
+              to="/dashboard"
               className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors mb-2"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -47,23 +88,25 @@ export default function Orders() {
               {user?.role === 'vendor' ? 'My Orders' : 'Order History'}
             </h1>
             <p className="text-muted-foreground mt-1">
-              {user?.role === 'vendor' 
-                ? 'Manage orders from your clients' 
+              {user?.role === 'vendor'
+                ? 'Manage orders from your clients'
                 : 'Track and manage your service orders'}
             </p>
           </div>
         </div>
 
         {/* Orders List */}
-        {userOrders.length > 0 ? (
+        {isLoading ? (
+          <div className="text-center py-12">Loading orders...</div>
+        ) : userOrders.length > 0 ? (
           <div className="space-y-4">
             {userOrders.map((order) => {
               const status = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.pending;
               const StatusIcon = status.icon;
 
               return (
-                <div 
-                  key={order.id} 
+                <div
+                  key={order.id}
                   className="bg-card rounded-xl border border-border p-6 hover:shadow-md transition-shadow"
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -83,14 +126,14 @@ export default function Orders() {
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground mb-2">
-                            {user?.role === 'vendor' 
-                              ? `Client: ${order.clientName}` 
+                            {user?.role === 'vendor'
+                              ? `Client: ${order.clientName}`
                               : `Vendor: ${order.vendorName}`}
                           </p>
                           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                             <span>Order #{order.id}</span>
                             <span>•</span>
-                            <span>{new Date(order.createdAt).toLocaleDateString()}</span>
+                            <span>{order.created_at.toDate().toLocaleDateString()}</span>
                             <span>•</span>
                             <span className="font-semibold text-foreground">
                               ${order.amount.toFixed(2)}
@@ -138,8 +181,8 @@ export default function Orders() {
               No orders yet
             </h2>
             <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              {user?.role === 'vendor' 
-                ? 'When clients purchase your services, their orders will appear here.' 
+              {user?.role === 'vendor'
+                ? 'When clients purchase your services, their orders will appear here.'
                 : 'Start exploring our marketplace to find the perfect services for your needs.'}
             </p>
             <Link to="/services">

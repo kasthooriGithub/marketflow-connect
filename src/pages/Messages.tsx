@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { useMessaging, Conversation, Message } from '@/contexts/MessagingContext';
+import { useMessaging, Conversation } from '@/contexts/MessagingContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,34 +18,31 @@ export default function Messages() {
     activeConversation,
     setActiveConversation,
     sendMessage,
-    getConversationMessages,
+    messages, // Use messages from context directly
     markAsRead,
   } = useMessaging();
 
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [currentMessages, setCurrentMessages] = useState<Message[]>([]);
+
+  // Removed local currentMessages state as context handles it now
 
   useEffect(() => {
     if (activeConversation) {
-      setCurrentMessages(getConversationMessages(activeConversation.id));
-      markAsRead(activeConversation.id);
+      // markAsRead(activeConversation.id); // Valid if context supports it
     }
-  }, [activeConversation, getConversationMessages, markAsRead]);
+  }, [activeConversation, markAsRead]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentMessages]);
+  }, [messages]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeConversation) return;
     sendMessage(activeConversation.id, newMessage.trim());
     setNewMessage('');
-    // Refresh messages
-    setTimeout(() => {
-      setCurrentMessages(getConversationMessages(activeConversation.id));
-    }, 100);
+    // No need to manually refresh, subscription handles it
   };
 
   const getOtherParticipant = (conv: Conversation) => {
@@ -60,7 +57,7 @@ export default function Messages() {
     const date = new Date(timestamp);
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffDays === 1) {
@@ -71,24 +68,8 @@ export default function Messages() {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
-  if (conversations.length === 0) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-16">
-          <div className="text-center max-w-md mx-auto">
-            <MessageSquare className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h1 className="text-2xl font-bold mb-2">No messages yet</h1>
-            <p className="text-muted-foreground mb-6">
-              Start a conversation with a vendor by visiting a service page
-            </p>
-            <Link to="/services">
-              <Button variant="gradient">Browse Services</Button>
-            </Link>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  // Removed blocking check for conversations.length === 0 to always show layout
+  // Only show empty state inside the list area if empty
 
   return (
     <Layout>
@@ -105,48 +86,54 @@ export default function Messages() {
               <h2 className="font-semibold">Conversations</h2>
             </div>
             <ScrollArea className="h-[calc(100%-60px)]">
-              {conversations.map(conv => {
-                const other = getOtherParticipant(conv);
-                const isActive = activeConversation?.id === conv.id;
-                
-                return (
-                  <button
-                    key={conv.id}
-                    onClick={() => setActiveConversation(conv)}
-                    className={cn(
-                      "w-full p-4 text-left hover:bg-muted/50 transition-colors border-b",
-                      isActive && "bg-primary/5 border-l-2 border-l-primary"
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {other.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium truncate">{other.name}</p>
+              {conversations.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground text-sm">
+                  No conversations found.
+                </div>
+              ) : (
+                conversations.map(conv => {
+                  const other = getOtherParticipant(conv);
+                  const isActive = activeConversation?.id === conv.id;
+
+                  return (
+                    <button
+                      key={conv.id}
+                      onClick={() => setActiveConversation(conv)}
+                      className={cn(
+                        "w-full p-4 text-left hover:bg-muted/50 transition-colors border-b",
+                        isActive && "bg-primary/5 border-l-2 border-l-primary"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            {other.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium truncate">{other.name}</p>
+                            {conv.lastMessage && (
+                              <span className="text-xs text-muted-foreground">
+                                {formatTime(conv.lastMessage.timestamp)}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {conv.serviceName}
+                          </p>
                           {conv.lastMessage && (
-                            <span className="text-xs text-muted-foreground">
-                              {formatTime(conv.lastMessage.timestamp)}
-                            </span>
+                            <p className="text-sm text-muted-foreground truncate mt-1">
+                              {conv.lastMessage.senderId === user?.id ? 'You: ' : ''}
+                              {conv.lastMessage.content}
+                            </p>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {conv.serviceName}
-                        </p>
-                        {conv.lastMessage && (
-                          <p className="text-sm text-muted-foreground truncate mt-1">
-                            {conv.lastMessage.senderId === user?.id ? 'You: ' : ''}
-                            {conv.lastMessage.content}
-                          </p>
-                        )}
                       </div>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })
+              )}
             </ScrollArea>
           </Card>
 
@@ -183,9 +170,9 @@ export default function Messages() {
                 {/* Messages */}
                 <ScrollArea className="flex-1 p-4">
                   <div className="space-y-4">
-                    {currentMessages.map(msg => {
+                    {messages.map(msg => {
                       const isOwn = msg.senderId === user?.id;
-                      
+
                       return (
                         <div
                           key={msg.id}

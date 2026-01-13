@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { 
-  Star, Clock, Check, ArrowLeft, User, MessageSquare, Shield, 
-  ShoppingCart, Send, BadgeCheck, RefreshCw, Zap, Award, 
+import {
+  Star, Clock, Check, ArrowLeft, User, MessageSquare, Shield,
+  ShoppingCart, Send, BadgeCheck, RefreshCw, Zap, Award,
   MapPin, Calendar, TrendingUp, Play, ChevronRight
 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
@@ -96,17 +96,24 @@ export default function ServiceDetail() {
     navigate('/cart');
   };
 
-  const handleContactVendor = () => {
+  const handleContactVendor = async () => {
     if (!service) return;
-    const conversation = startConversation(
-      service.vendorId,
-      service.vendorName,
-      service.id,
-      service.title
-    );
-    setActiveConversation(conversation);
-    navigate('/messages');
-    toast.success('Conversation started!');
+    try {
+      const conversation = await startConversation(
+        service.vendorId,
+        service.vendorName,
+        service.id,
+        service.title
+      );
+      if (conversation) {
+        setActiveConversation(conversation);
+        navigate('/messages');
+        toast.success('Conversation started!');
+      }
+    } catch (error) {
+      console.error("Failed to start conversation:", error);
+      toast.error("Failed to start conversation. Please try again.");
+    }
   };
 
   if (!isAuthenticated) {
@@ -225,13 +232,13 @@ export default function ServiceDetail() {
                     <Play className="w-8 h-8 text-primary ml-1" />
                   </div>
                   <span className="text-6xl">
-                    {service.tags[0] === 'SEO' ? '🔍' : 
-                     service.tags[0] === 'Social Media' ? '📱' : 
-                     service.tags[0] === 'Content' ? '✍️' : 
-                     service.tags[0] === 'PPC' ? '📈' : 
-                     service.tags[0] === 'Video' ? '🎬' : 
-                     service.tags[0] === 'Branding' ? '🎨' : 
-                     service.tags[0] === 'Email' ? '📧' : '📊'}
+                    {service.tags[0] === 'SEO' ? '🔍' :
+                      service.tags[0] === 'Social Media' ? '📱' :
+                        service.tags[0] === 'Content' ? '✍️' :
+                          service.tags[0] === 'PPC' ? '📈' :
+                            service.tags[0] === 'Video' ? '🎬' :
+                              service.tags[0] === 'Branding' ? '🎨' :
+                                service.tags[0] === 'Email' ? '📧' : '📊'}
                   </span>
                 </div>
               </div>
@@ -240,20 +247,20 @@ export default function ServiceDetail() {
             {/* Tabbed Content */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="w-full justify-start h-auto p-0 bg-transparent border-b border-border rounded-none">
-                <TabsTrigger 
-                  value="description" 
+                <TabsTrigger
+                  value="description"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 py-3 font-medium"
                 >
                   Description
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="reviews" 
+                <TabsTrigger
+                  value="reviews"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 py-3 font-medium"
                 >
                   Reviews ({service.reviewCount})
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="about" 
+                <TabsTrigger
+                  value="about"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 py-3 font-medium"
                 >
                   About Seller
@@ -447,11 +454,10 @@ export default function ServiceDetail() {
                     <button
                       key={tier.id}
                       onClick={() => setSelectedTier(tier.id)}
-                      className={`relative py-4 px-2 text-center font-medium transition-all ${
-                        selectedTier === tier.id 
-                          ? 'bg-card text-foreground border-b-2 border-primary -mb-px' 
+                      className={`relative py-4 px-2 text-center font-medium transition-all ${selectedTier === tier.id
+                          ? 'bg-card text-foreground border-b-2 border-primary -mb-px'
                           : 'bg-muted/30 text-muted-foreground hover:bg-muted/50'
-                      }`}
+                        }`}
                     >
                       {tier.popular && (
                         <span className="absolute -top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full font-medium">
@@ -499,29 +505,29 @@ export default function ServiceDetail() {
                   </div>
 
                   {/* CTA Buttons */}
-                  <Button 
-                    variant="hero" 
-                    size="lg" 
+                  <Button
+                    variant="hero"
+                    size="lg"
                     className="w-full mb-3 h-12 text-base font-semibold"
                     onClick={handleBuyNow}
                   >
                     Continue (${currentTier.price})
                     <ChevronRight className="w-5 h-5 ml-1" />
                   </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    size="lg" 
+
+                  <Button
+                    variant="outline"
+                    size="lg"
                     className="w-full mb-3 h-11"
                     onClick={handleAddToCart}
                   >
                     <ShoppingCart className="w-4 h-4 mr-2" />
                     Add to Cart
                   </Button>
-                  
-                  <Button 
-                    variant="ghost" 
-                    size="lg" 
+
+                  <Button
+                    variant="ghost"
+                    size="lg"
                     className="w-full h-11"
                     onClick={handleContactVendor}
                   >

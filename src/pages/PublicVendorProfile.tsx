@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  MapPin, 
-  Calendar, 
-  Clock, 
-  Star, 
+import {
+  MapPin,
+  Calendar,
+  Clock,
+  Star,
   CheckCircle,
   MessageSquare,
   ArrowLeft,
@@ -28,8 +28,8 @@ function PortfolioSection({ vendor }: { vendor: Vendor }) {
       {vendor.portfolio.map((item) => (
         <div key={item.id} className="group relative bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all">
           <div className="aspect-video bg-muted relative">
-            <img 
-              src={item.image} 
+            <img
+              src={item.image}
               alt={item.title}
               className="w-full h-full object-cover"
             />
@@ -67,7 +67,7 @@ function ReviewsSection({ vendor }: { vendor: Vendor }) {
   const ratingDistribution = [5, 4, 3, 2, 1].map(rating => ({
     rating,
     count: vendor.reviews.filter(r => Math.floor(r.rating) === rating).length,
-    percentage: vendor.reviews.length > 0 
+    percentage: vendor.reviews.length > 0
       ? (vendor.reviews.filter(r => Math.floor(r.rating) === rating).length / vendor.reviews.length) * 100
       : 0
   }));
@@ -81,22 +81,22 @@ function ReviewsSection({ vendor }: { vendor: Vendor }) {
             <div className="text-5xl font-bold text-foreground">{vendor.rating}</div>
             <div className="flex items-center justify-center md:justify-start gap-1 mt-2">
               {[...Array(5)].map((_, i) => (
-                <Star 
-                  key={i} 
+                <Star
+                  key={i}
                   className={`w-5 h-5 ${i < Math.floor(vendor.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}
                 />
               ))}
             </div>
             <p className="text-sm text-muted-foreground mt-1">{vendor.reviewCount} reviews</p>
           </div>
-          
+
           <div className="flex-1 space-y-2">
             {ratingDistribution.map(({ rating, count, percentage }) => (
               <div key={rating} className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground w-6">{rating}</span>
                 <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                 <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-yellow-400 rounded-full transition-all"
                     style={{ width: `${percentage}%` }}
                   />
@@ -126,8 +126,8 @@ function ReviewsSection({ vendor }: { vendor: Vendor }) {
               </div>
               <div className="flex items-center gap-1">
                 {[...Array(5)].map((_, i) => (
-                  <Star 
-                    key={i} 
+                  <Star
+                    key={i}
                     className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}
                   />
                 ))}
@@ -135,10 +135,10 @@ function ReviewsSection({ vendor }: { vendor: Vendor }) {
             </div>
             <p className="text-muted-foreground">{review.comment}</p>
             <p className="text-xs text-muted-foreground mt-3">
-              {new Date(review.date).toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+              {new Date(review.date).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
               })}
             </p>
           </div>
@@ -176,7 +176,7 @@ export default function PublicVendorProfile() {
   const { vendorId } = useParams<{ vendorId: string }>();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
-  const { startConversation } = useMessaging();
+  const { startConversation, setActiveConversation } = useMessaging();
   const [activeTab, setActiveTab] = useState('portfolio');
 
   const vendor = vendorId ? getVendorById(vendorId) : null;
@@ -192,7 +192,7 @@ export default function PublicVendorProfile() {
     );
   }
 
-  const handleContactVendor = () => {
+  const handleContactVendor = async () => {
     if (!isAuthenticated) {
       toast.error('Please log in to message vendors');
       navigate('/login');
@@ -203,14 +203,23 @@ export default function PublicVendorProfile() {
     const serviceName = vendorServices.length > 0 ? vendorServices[0].title : 'General Inquiry';
     const serviceId = vendorServices.length > 0 ? vendorServices[0].id : 'general';
 
-    startConversation(
-      vendor.id,
-      vendor.name,
-      serviceId,
-      serviceName
-    );
-    navigate('/messages');
-    toast.success(`Started conversation with ${vendor.name}`);
+    try {
+      const conversation = await startConversation(
+        vendor.id,
+        vendor.name,
+        serviceId,
+        serviceName
+      );
+
+      if (conversation) {
+        setActiveConversation(conversation);
+        navigate('/messages');
+        toast.success(`Started conversation with ${vendor.name}`);
+      }
+    } catch (error) {
+      console.error("Failed to start conversation", error);
+      toast.error("Could not start conversation");
+    }
   };
 
   const vendorServices = services.filter(s => s.vendorId === vendor.id);
@@ -220,9 +229,9 @@ export default function PublicVendorProfile() {
       <div className="min-h-screen bg-background">
         {/* Cover Image */}
         <div className="h-48 md:h-64 bg-gradient-to-r from-primary via-primary/80 to-accent relative">
-          <Button 
-            variant="secondary" 
-            size="sm" 
+          <Button
+            variant="secondary"
+            size="sm"
             className="absolute top-4 left-4"
             onClick={() => navigate(-1)}
           >
@@ -256,7 +265,7 @@ export default function PublicVendorProfile() {
                       {vendor.name}
                     </h1>
                     <p className="text-muted-foreground mt-1">{vendor.tagline}</p>
-                    
+
                     <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <MapPin className="w-4 h-4" />
@@ -344,7 +353,7 @@ export default function PublicVendorProfile() {
               <div>
                 <h3 className="font-semibold text-foreground mb-1">Message Before You Pay</h3>
                 <p className="text-sm text-muted-foreground">
-                  Discuss your project requirements, clarify scope, and get to know {vendor.name} before committing. 
+                  Discuss your project requirements, clarify scope, and get to know {vendor.name} before committing.
                   Only proceed to checkout when you're confident about the engagement.
                 </p>
                 <Button variant="link" className="px-0 mt-2" onClick={handleContactVendor}>
@@ -357,19 +366,19 @@ export default function PublicVendorProfile() {
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="pb-12">
             <TabsList className="w-full justify-start bg-transparent border-b border-border rounded-none p-0 h-auto">
-              <TabsTrigger 
+              <TabsTrigger
                 value="portfolio"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
               >
                 Portfolio ({vendor.portfolio.length})
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="services"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
               >
                 Services ({vendorServices.length})
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="reviews"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
               >

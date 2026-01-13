@@ -11,11 +11,11 @@ import { AddServiceModal } from '@/components/vendor/AddServiceModal';
 import { AddPortfolioModal, PortfolioItem } from '@/components/vendor/AddPortfolioModal';
 import { useVendorServices } from '@/contexts/VendorServicesContext';
 import { Service } from '@/data/services';
-import { 
-  MapPin, 
-  Calendar, 
-  Clock, 
-  Star, 
+import {
+  MapPin,
+  Calendar,
+  Clock,
+  Star,
   CheckCircle,
   Edit,
   Plus,
@@ -26,12 +26,12 @@ import {
   Trash2
 } from 'lucide-react';
 
-function PortfolioSection({ 
-  vendor, 
-  isOwner, 
-  onAddPortfolio 
-}: { 
-  vendor: Vendor; 
+function PortfolioSection({
+  vendor,
+  isOwner,
+  onAddPortfolio
+}: {
+  vendor: Vendor;
   isOwner: boolean;
   onAddPortfolio: () => void;
 }) {
@@ -45,13 +45,13 @@ function PortfolioSection({
           </Button>
         </div>
       )}
-      
+
       <div className="grid md:grid-cols-2 gap-6">
         {vendor.portfolio.map((item) => (
           <div key={item.id} className="group relative bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all">
             <div className="aspect-video bg-muted relative">
-              <img 
-                src={item.image} 
+              <img
+                src={item.image}
                 alt={item.title}
                 className="w-full h-full object-cover"
               />
@@ -113,22 +113,22 @@ function ReviewsSection({ vendor }: { vendor: Vendor }) {
             <div className="text-5xl font-bold text-foreground">{vendor.rating}</div>
             <div className="flex items-center justify-center md:justify-start gap-1 mt-2">
               {[...Array(5)].map((_, i) => (
-                <Star 
-                  key={i} 
+                <Star
+                  key={i}
                   className={`w-5 h-5 ${i < Math.floor(vendor.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}
                 />
               ))}
             </div>
             <p className="text-sm text-muted-foreground mt-1">{vendor.reviewCount} reviews</p>
           </div>
-          
+
           <div className="flex-1 space-y-2">
             {ratingDistribution.map(({ rating, count, percentage }) => (
               <div key={rating} className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground w-6">{rating}</span>
                 <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                 <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-yellow-400 rounded-full transition-all"
                     style={{ width: `${percentage}%` }}
                   />
@@ -158,8 +158,8 @@ function ReviewsSection({ vendor }: { vendor: Vendor }) {
               </div>
               <div className="flex items-center gap-1">
                 {[...Array(5)].map((_, i) => (
-                  <Star 
-                    key={i} 
+                  <Star
+                    key={i}
                     className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}
                   />
                 ))}
@@ -167,10 +167,10 @@ function ReviewsSection({ vendor }: { vendor: Vendor }) {
             </div>
             <p className="text-muted-foreground">{review.comment}</p>
             <p className="text-xs text-muted-foreground mt-3">
-              {new Date(review.date).toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+              {new Date(review.date).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
               })}
             </p>
           </div>
@@ -180,17 +180,17 @@ function ReviewsSection({ vendor }: { vendor: Vendor }) {
   );
 }
 
-function ServicesSection({ 
-  vendorId, 
+function ServicesSection({
+  vendorId,
   isOwner,
-  onAddService 
-}: { 
-  vendorId: string; 
+  onAddService
+}: {
+  vendorId: string;
   isOwner: boolean;
   onAddService: () => void;
 }) {
   const { vendorServices, allServices } = useVendorServices();
-  
+
   // Combine static services and vendor-added services
   const staticVendorServices = services.filter(s => s.vendorId === vendorId);
   const contextVendorServices = vendorServices.filter(s => s.vendorId === vendorId);
@@ -246,14 +246,22 @@ function ServicesSection({
 
 export default function VendorProfile() {
   const { user } = useAuth();
+  const { currentVendor, loadingVendor } = useVendorServices();
   const [activeTab, setActiveTab] = useState('portfolio');
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
-  
-  // For demo, show the logged-in vendor's profile or a default vendor
-  const vendor = user?.email ? getVendorByEmail(user.email) : null;
-  const isOwner = user?.role === 'vendor' && vendor?.email === user?.email;
+
+  // Logic: 
+  // 1. If viewing own profile (isOwner), use currentVendor from context (Firestore).
+  // 2. If viewing another vendor, use static data for now (or could implement separate fetch).
+  // The 'user' object from AuthContext tells us who is logged in.
+  // This page seems to be "My Profile" mostly, or at least handles it.
+  // Note: There is a separate 'PublicVendorProfile' page? Let me check router.
+  // Yes, /vendor/profile is this page (Protected, vendor only). /vendors/:vendorId is PublicVendorProfile.
+  // So this page is ALWAYS "My Profile".
+
+  const isOwner = true; // Since this is the protected '/vendor/profile' route
 
   const handleAddPortfolio = () => {
     setIsPortfolioModalOpen(true);
@@ -267,50 +275,37 @@ export default function VendorProfile() {
     setPortfolioItems(prev => [...prev, item]);
   };
 
-  // Default vendor data for demo
-  const displayVendor: Vendor = vendor || {
-    id: '2',
-    name: user?.name || 'Digital Agency',
-    email: user?.email || 'vendor@example.com',
-    tagline: 'Full-service digital marketing agency',
-    description: 'We are a passionate team of digital marketing experts dedicated to helping businesses grow online. With over 10 years of experience, we specialize in SEO, content marketing, and social media management.',
-    location: 'New York, USA',
-    memberSince: 'January 2023',
-    responseTime: '< 2 hours',
-    completionRate: 98,
-    totalProjects: 156,
-    rating: 4.9,
-    reviewCount: 127,
-    skills: ['SEO', 'Content Marketing', 'Social Media', 'PPC', 'Email Marketing', 'Analytics'],
-    categories: ['seo', 'social-media', 'content', 'ppc', 'email', 'analytics'],
-    startingPrice: 499,
-    portfolio: [
-      {
-        id: 'p1',
-        title: 'E-commerce SEO Overhaul',
-        description: 'Increased organic traffic by 340% for a major e-commerce brand',
-        image: '/placeholder.svg',
-        category: 'SEO'
-      },
-      {
-        id: 'p2',
-        title: 'Social Media Campaign',
-        description: 'Viral campaign that reached 2M+ users',
-        image: '/placeholder.svg',
-        category: 'Social Media'
-      }
-    ],
-    reviews: [
-      {
-        id: 'r1',
-        clientName: 'Sarah Johnson',
-        rating: 5,
-        comment: 'Absolutely fantastic work! They exceeded all expectations and delivered results ahead of schedule.',
-        serviceName: 'Complete SEO Audit & Strategy',
-        date: '2024-01-15'
-      }
-    ]
+  // Fallback to static or default if context is loading or empty (shouldn't happen if auth works)
+  // We prioritize 'currentVendor' keys over default ones.
+  const displayVendor: Vendor = currentVendor || {
+    id: user?.id || 'unknown',
+    name: user?.name || 'Your Name',
+    email: user?.email || '',
+    tagline: 'Your tagline goes here',
+    description: 'Add a description to your profile',
+    location: 'Location',
+    memberSince: new Date().getFullYear().toString(),
+    responseTime: '24 hours',
+    completionRate: 0,
+    totalProjects: 0,
+    rating: 0,
+    reviewCount: 0,
+    skills: [],
+    categories: [],
+    startingPrice: 0,
+    portfolio: [],
+    reviews: []
   };
+
+  if (loadingVendor) {
+    return (
+      <Layout>
+        <div className="flex h-screen items-center justify-center">
+          <p>Loading profile...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -318,9 +313,9 @@ export default function VendorProfile() {
         {/* Cover Image */}
         <div className="h-48 md:h-64 bg-gradient-to-r from-primary via-primary/80 to-accent relative">
           {isOwner && (
-            <Button 
-              variant="secondary" 
-              size="sm" 
+            <Button
+              variant="secondary"
+              size="sm"
               className="absolute bottom-4 right-4"
             >
               <Edit className="w-4 h-4 mr-2" />
@@ -345,9 +340,9 @@ export default function VendorProfile() {
                   )}
                 </div>
                 {isOwner && (
-                  <Button 
-                    size="icon" 
-                    variant="secondary" 
+                  <Button
+                    size="icon"
+                    variant="secondary"
                     className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
                   >
                     <Edit className="w-4 h-4" />
@@ -363,7 +358,7 @@ export default function VendorProfile() {
                       {displayVendor.name}
                     </h1>
                     <p className="text-muted-foreground mt-1">{displayVendor.tagline}</p>
-                    
+
                     <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <MapPin className="w-4 h-4" />
@@ -439,7 +434,7 @@ export default function VendorProfile() {
               <h2 className="font-display text-lg font-semibold text-foreground mb-3">Skills</h2>
               <div className="flex flex-wrap gap-2">
                 {displayVendor.skills.map((skill) => (
-                  <span 
+                  <span
                     key={skill}
                     className="px-3 py-1 text-sm rounded-full bg-primary/10 text-primary"
                   >
@@ -453,19 +448,19 @@ export default function VendorProfile() {
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="pb-12">
             <TabsList className="w-full justify-start bg-transparent border-b border-border rounded-none p-0 h-auto">
-              <TabsTrigger 
+              <TabsTrigger
                 value="portfolio"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
               >
                 Portfolio
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="services"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
               >
                 Services
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="reviews"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
               >
@@ -474,20 +469,20 @@ export default function VendorProfile() {
             </TabsList>
 
             <TabsContent value="portfolio" className="mt-6">
-              <PortfolioSection 
+              <PortfolioSection
                 vendor={{
                   ...displayVendor,
                   portfolio: [...displayVendor.portfolio, ...portfolioItems]
-                }} 
-                isOwner={isOwner} 
+                }}
+                isOwner={isOwner}
                 onAddPortfolio={handleAddPortfolio}
               />
             </TabsContent>
 
             <TabsContent value="services" className="mt-6">
-              <ServicesSection 
-                vendorId={displayVendor.id} 
-                isOwner={isOwner} 
+              <ServicesSection
+                vendorId={displayVendor.id}
+                isOwner={isOwner}
                 onAddService={handleAddService}
               />
             </TabsContent>
@@ -500,9 +495,9 @@ export default function VendorProfile() {
       </div>
 
       {/* Modals */}
-      <AddServiceModal 
-        open={isServiceModalOpen} 
-        onOpenChange={setIsServiceModalOpen} 
+      <AddServiceModal
+        open={isServiceModalOpen}
+        onOpenChange={setIsServiceModalOpen}
       />
       <AddPortfolioModal
         open={isPortfolioModalOpen}
