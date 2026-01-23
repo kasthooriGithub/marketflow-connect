@@ -53,14 +53,14 @@ export default function Index() {
 
         <Container className="py-5 position-relative z-1">
           <div className="text-center mx-auto" style={{ maxWidth: '850px' }}>
-            <div className="d-inline-flex align-items-center gap-2 px-4 py-2 rounded-pill bg-primary bg-opacity-10 text-primary mb-4 border border-primary border-opacity-10 animate-fade-in shadow-sm">
-              <Zap size={16} className="fill-primary" />
+            <div className="d-inline-flex align-items-center gap-2 px-4 py-2 rounded-pill bg-navy-light text-navy mb-4 border border-navy border-opacity-10 animate-fade-in shadow-sm">
+              <Zap size={16} style={{ fill: 'var(--navy-primary)' }} />
               <span className="small fw-bold text-uppercase tracking-wider">The #1 Digital Marketing Marketplace</span>
             </div>
 
             <h1 className="display-3 fw-bold mb-4 text-dark font-display leading-tight">
               Grow Your Business with{' '}
-              <span className="text-primary bg-primary bg-opacity-10 px-2 rounded">Expert Marketing</span>
+              <span className="highlight-navy">Expert Marketing</span>
             </h1>
 
             <p className="lead text-muted mb-5 px-lg-5 fs-5">
@@ -193,14 +193,14 @@ export default function Index() {
               <p className="mb-5 text-white opacity-75 fs-5 mx-auto" style={{ maxWidth: '650px' }}>
                 Join over 50,000+ businesses who have already found their perfect marketing partner on MarketFlow Connect.
               </p>
-              <div className="d-flex flex-column flex-sm-row justify-content-center gap-3">
+              <div className="d-flex flex-column flex-sm-row justify-content-center gap-4 mt-2">
                 <Link to="/signup">
-                  <Button size="lg" variant="default" className="bg-white text-primary border-white hover-bg-light fw-bold px-5 py-3 rounded-pill shadow-lg">
+                  <Button size="lg" variant="default" className="bg-navy text-white border-navy hover-bg-light fw-bold px-5 py-3 rounded-pill shadow-lg">
                     Get Started Free <ArrowRight className="ms-2" size={20} />
                   </Button>
                 </Link>
                 <Link to="/how-it-works">
-                  <Button size="lg" variant="outline-primary" className="text-white border-white border-2 px-5 py-3 rounded-pill">
+                  <Button size="lg" variant="outline-primary" className="btn-cta-secondary px-5 py-3 rounded-pill">
                     See How It Works
                   </Button>
                 </Link>

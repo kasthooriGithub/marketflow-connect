@@ -11,7 +11,8 @@ import { ProtectedRoute } from "components/routes/ProtectedRoute";
 import { AdminRoute } from "components/routes/AdminRoute";
 
 // Public Pages
-import Index from "./pages/Index";
+// Public Pages
+import LandingPage from "./pages/landing/LandingPage";
 import HowItWorks from "./pages/HowItWorks";
 import Pricing from "./pages/Pricing";
 import Login from "./pages/Login";
@@ -56,7 +57,7 @@ const App = () => (
               <BrowserRouter>
                 <Routes>
                   {/* Public Routes */}
-                  <Route path="/" element={<Index />} />
+                  <Route path="/" element={<LandingPage />} />
                   <Route path="/how-it-works" element={<HowItWorks />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/login" element={<Login />} />

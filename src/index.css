@@ -6,8 +6,35 @@
 
 /* Global Styles - Bootstrap Overrides */
 
+/* Universal reset to ensure no top spacing */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 100%;
+}
+
+/* Override Bootstrap navbar default spacing */
+.navbar {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
 :root {
-  --primary-color: #0d6efd;
+  --primary-color: #0A2540;
+  --navy-primary: #0A2540;
+  --navy-light: rgba(10, 37, 64, 0.08);
+
+  /* Bootstrap Overrides */
+  --bs-primary: #0A2540;
+  --bs-primary-rgb: 10, 37, 64;
+  --bs-link-color: #0A2540;
+  --bs-link-hover-color: #0d3b66;
 }
 
 body {
@@ -42,4 +69,71 @@ a {
 /* Utility classes to match some removed Tailwind patterns if needed */
 .cursor-pointer {
   cursor: pointer;
+}
+
+.text-navy {
+  color: var(--navy-primary) !important;
+}
+
+.bg-navy-light {
+  background-color: var(--navy-light) !important;
+}
+
+.highlight-navy {
+  color: var(--navy-primary) !important;
+  background-color: var(--navy-light) !important;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+}
+
+/* Custom Button Overrides for consistency */
+.btn-primary,
+.btn-default {
+  background-color: var(--navy-primary) !important;
+  border-color: var(--navy-primary) !important;
+  color: white !important;
+}
+
+.btn-primary:hover,
+.btn-default:hover,
+.btn-primary:focus,
+.btn-default:focus,
+.btn-primary:active,
+.btn-default:active {
+  background-color: #0d3b66 !important;
+  border-color: #0d3b66 !important;
+}
+
+.btn-outline-primary {
+  color: var(--navy-primary) !important;
+  border-color: var(--navy-primary) !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--navy-primary) !important;
+  border-color: var(--navy-primary) !important;
+  color: white !important;
+}
+
+/* CTA Secondary Button Overrides */
+.btn-cta-secondary {
+  background-color: white !important;
+  color: var(--navy-primary) !important;
+  border: 2px solid var(--navy-primary) !important;
+  transition: all 0.3s ease;
+}
+
+.btn-cta-secondary:hover {
+  background-color: #E6EEF6 !important;
+  color: var(--navy-primary) !important;
+  border-color: var(--navy-primary) !important;
+}
+
+.bg-navy {
+  background-color: var(--navy-primary) !important;
+}
+
+.border-navy {
+  border-color: var(--navy-primary) !important;
 }
