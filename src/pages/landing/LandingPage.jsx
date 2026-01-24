@@ -1,6 +1,7 @@
 import Navbar from './Navbar';
 import Hero from './Hero';
-import Features from './Features';
+import CategoryGrid from './CategoryGrid';
+import FeaturedServices from './FeaturedServices';
 import HowItWorks from './HowItWorks';
 import Pricing from './Pricing';
 import Testimonials from './Testimonials';
@@ -13,10 +14,11 @@ const LandingPage = () => {
             <Navbar />
             <main className="flex-grow-1">
                 <Hero />
-                <Features />
+                <CategoryGrid />
+                <FeaturedServices />
                 <HowItWorks />
-                <Pricing />
                 <Testimonials />
+                <Pricing />
                 <CTA />
             </main>
             <Footer />

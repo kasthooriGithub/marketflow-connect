@@ -1,64 +1,111 @@
-import { Link } from 'react-router-dom';
-import { ArrowRight, Zap } from 'lucide-react';
-import { Button } from 'components/ui/button';
-import { Container, Row, Col, Card } from 'react-bootstrap';
-
-const stats = [
-    { value: '2,500+', label: 'Active Vendors' },
-    { value: '50K+', label: 'Services Sold' },
-    { value: '98%', label: 'Satisfaction Rate' },
-    { value: '$12M+', label: 'Paid to Vendors' },
-];
+import SearchBar from './SearchBar';
+import { Container } from 'react-bootstrap';
+import { CheckCircle } from 'lucide-react';
 
 export default function Hero() {
     return (
-        <section className="bg-gradient-to-b from-primary-light to-white py-5 position-relative overflow-hidden">
-            <div className="position-absolute top-0 end-0 p-5 opacity-10 d-none d-lg-block">
-                <div className="bg-primary rounded-circle" style={{ width: 400, height: 400, filter: 'blur(100px)' }}></div>
-            </div>
+        <section
+  className="position-relative"
+  style={{
+    background: "linear-gradient(180deg, #F7F9FC 0%, #FFFFFF 60%)",
+    paddingTop: "4rem",
+    paddingBottom: "4rem",
+  }}
+>
 
-            <Container className="py-5 position-relative z-1">
-                <div className="text-center mx-auto" style={{ maxWidth: '850px' }}>
-                    <div className="d-inline-flex align-items-center gap-2 px-4 py-2 rounded-pill bg-navy-light text-navy mb-4 border border-navy border-opacity-10 animate-fade-in shadow-sm">
-                        <Zap size={16} style={{ fill: 'var(--navy-primary)' }} />
-                        <span className="small fw-bold text-uppercase tracking-wider">The #1 Digital Marketing Marketplace</span>
-                    </div>
+            <Container>
+                <div className="text-center mx-auto" style={{ maxWidth: '900px' }}>
+                    {/* Main Headline */}
+                    <h1
+  className="fw-bold mb-4"
+  style={{
+    fontSize: "clamp(2.5rem, 5vw, 3.75rem)",
+    lineHeight: "1.15",
+    color: "#404145",
+    letterSpacing: "-0.02em",
+  }}
+>
+  Find the perfect{" "}
+  <span
+    style={{
+      display: "inline-block",
+      background: "linear-gradient(135deg, #00B67A 0%, #0A2540 100%)",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+      backgroundClip: "text",
+    }}
+  >
+    marketing
+  </span>
+  <br />
+  <span
+    style={{
+      display: "inline-block",
+      background: "linear-gradient(135deg, #00B67A 0%, #0A2540 100%)",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+      backgroundClip: "text",
+    }}
+  >
+    service
+  </span>{" "}
+  for your business
+</h1>
 
-                    <h1 className="display-3 fw-bold mb-4 text-dark font-display leading-tight">
-                        Grow Your Business with{' '}
-                        <span className="highlight-navy">Expert Marketing</span>
-                    </h1>
 
-                    <p className="lead text-muted mb-5 px-lg-5 fs-5">
-                        Connect with top digital marketing agencies and freelancers. From SEO to social media, find the perfect service to scale your business to new heights.
+                    {/* Subheadline */}
+                    <p className="mb-5" style={{
+                        fontSize: '1.25rem',
+                        color: '#62646A',
+                        lineHeight: '1.6',
+                        maxWidth: '700px',
+                        margin: '0 auto 2.5rem'
+                    }}>
+                        Connect with expert freelancers and agencies ready to help you grow
                     </p>
 
-                    <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center gap-3 mb-5 mt-4">
-                        <Link to="/services">
-                            <Button variant="default" size="lg" className="px-5 py-3 shadow-lg rounded-pill">
-                                Browse Services <ArrowRight className="ms-2" size={20} />
-                            </Button>
-                        </Link>
-                        <Link to="/signup">
-                            <Button variant="outline-primary" size="lg" className="px-5 py-3 rounded-pill bg-white">
-                                Become a Vendor
-                            </Button>
-                        </Link>
+                    {/* Search Bar */}
+                    <div className="mb-5">
+                        <SearchBar />
+                    </div>
+
+                    {/* Trust Indicators */}
+                    <div className="d-flex flex-wrap justify-content-center align-items-center gap-4 pt-3">
+                        <div className="d-flex align-items-center gap-2">
+                            <CheckCircle size={18} style={{ color: '#00B67A' }} />
+                            <span style={{ color: '#62646A', fontSize: '0.95rem' }}>
+                                Verified experts
+                            </span>
+                        </div>
+                        <div className="d-flex align-items-center gap-2">
+                            <CheckCircle size={18} style={{ color: '#00B67A' }} />
+                            <span style={{ color: '#62646A', fontSize: '0.95rem' }}>
+                                Secure payments
+                            </span>
+                        </div>
+                        <div className="d-flex align-items-center gap-2">
+                            <CheckCircle size={18} style={{ color: '#00B67A' }} />
+                            <span style={{ color: '#62646A', fontSize: '0.95rem' }}>
+                                24/7 support
+                            </span>
+                        </div>
                     </div>
 
                     {/* Stats */}
-                    <Row className="mt-5 pt-5 g-4">
-                        {stats.map((stat) => (
-                            <Col xs={6} md={3} key={stat.label} className="text-center">
-                                <Card className="border-0 bg-transparent h-100">
-                                    <Card.Body className="p-0">
-                                        <div className="h2 fw-bold text-dark mb-1 font-display">{stat.value}</div>
-                                        <div className="text-muted small fw-medium text-uppercase tracking-wider" style={{ fontSize: '0.65rem' }}>{stat.label}</div>
-                                    </Card.Body>
-                                </Card>
-                            </Col>
-                        ))}
-                    </Row>
+                    <div className="d-flex flex-wrap justify-content-center gap-5 mt-5 pt-4" style={{ borderTop: '1px solid #E4E5E7' }}>
+                        <div className="text-center pt-4">
+                            <div className="h2 fw-bold mb-1" style={{ color: '#404145' }}>2,500+</div>
+                            <div className="small" style={{ color: '#95979D' }}>Verified Experts</div>
+                        </div>
+                        <div className="text-center pt-4">
+                            <div className="h2 fw-bold mb-1" style={{ color: '#404145' }}>50K+</div>
+                            <div className="small" style={{ color: '#95979D' }}>Projects Completed</div>
+                        </div>
+                        <div className="text-center pt-4">
+                            <div className="h2 fw-bold mb-1" style={{ color: '#404145' }}>4.9/5</div>
+                            <div className="small" style={{ color: '#95979D' }}>Average Rating</div>
+                        </div>
+                    </div>
                 </div>
             </Container>
         </section>

@@ -5,37 +5,56 @@ import { Container } from 'react-bootstrap';
 
 export default function CTA() {
     return (
-        <section className="py-5 bg-white mb-5">
+        <section className="section-padding bg-white">
             <Container>
-                <div className="bg-primary bg-gradient rounded-5 p-5 text-center position-relative overflow-hidden shadow-lg border border-primary border-4 border-opacity-10">
-                    <div className="position-absolute bottom-0 start-0 w-100 h-100 opacity-10 bg-pattern-white"></div>
+                <div
+                    className="rounded-4 p-5 text-center position-relative overflow-hidden"
+                    style={{
+                        background: 'linear-gradient(135deg, #0A2540 0%, #0d3b66 100%)',
+                        boxShadow: '0 12px 32px rgba(10, 37, 64, 0.2)'
+                    }}
+                >
                     <div className="position-relative z-1 py-4">
-                        <h2 className="display-5 fw-bold text-white mb-4">Ready to Grow Your Business?</h2>
+                        <h2 className="display-5 fw-bold text-white mb-4">
+                            Ready to find your perfect marketing expert?
+                        </h2>
                         <p className="mb-5 text-white opacity-75 fs-5 mx-auto" style={{ maxWidth: '650px' }}>
-                            Join over 50,000+ businesses who have already found their perfect marketing partner on MarketFlow Connect.
+                            Join 50,000+ businesses growing with MarketFlow
                         </p>
-                        <div className="d-flex flex-column flex-sm-row justify-content-center gap-4 mt-2">
+                        <div className="d-flex flex-column flex-sm-row justify-content-center gap-3">
                             <Link to="/signup">
-                                <Button size="lg" variant="default" className="bg-navy text-white border-navy fw-bold px-5 py-3 rounded-pill shadow-lg">
+                                <Button
+                                    size="lg"
+                                    className="px-5 py-3"
+                                    style={{
+                                        background: '#00B67A',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontWeight: 600
+                                    }}
+                                >
                                     Get Started Free <ArrowRight className="ms-2" size={20} />
                                 </Button>
                             </Link>
-                            <Link to="/how-it-works">
-                                <Button size="lg" variant="outline-primary" className="btn-cta-secondary px-5 py-3 rounded-pill">
-                                    See How It Works
+                            <Link to="/services">
+                                <Button
+                                    size="lg"
+                                    className="px-5 py-3"
+                                    style={{
+                                        background: 'white',
+                                        color: '#0A2540',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontWeight: 600
+                                    }}
+                                >
+                                    Browse Services
                                 </Button>
                             </Link>
                         </div>
                     </div>
                 </div>
             </Container>
-
-            <style>{`
-                .bg-pattern-white {
-                    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.05) 75%, transparent 75%, transparent);
-                    background-size: 40px 40px;
-                }
-            `}</style>
         </section>
     );
 }
