@@ -41,14 +41,34 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  const login = async (email, password) => {
-    try {
+const login = async (email, password) => {
+  try {
+    const { user: firebaseUser } =
       await signInWithEmailAndPassword(auth, email, password);
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
+
+    // 🔥 Fetch Firestore profile immediately
+    const userProfile = await userService.getUserProfile(firebaseUser.uid);
+
+    if (!userProfile) {
+      return {
+        success: false,
+        error: "User profile not found in database",
+      };
     }
-  };
+
+    // 🔥 Set user immediately (NO second login issue)
+    setUser({
+      ...userProfile,
+      id: userProfile.uid,
+      name: userProfile.full_name,
+      avatar: userProfile.photo_url,
+    });
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
 
   const adminLogin = async (email, password) => {
     try {

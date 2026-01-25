@@ -5,6 +5,16 @@
   box-sizing: border-box;
 }
 
+body {
+  margin: 0;
+  padding-top: 0 !important;
+}
+
+.sticky-top {
+  top: 0 !important;
+}
+
+
 html,
 body,
 #root {
@@ -50,7 +60,7 @@ body {
   color: var(--text-primary);
   background-color: var(--bg-white);
   -webkit-font-smoothing: antialiased;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.6;
 }
 
@@ -67,15 +77,15 @@ h6 {
 }
 
 h1 {
-  font-size: 3rem;
+  font-size: 2.5rem;
 }
 
 h2 {
-  font-size: 2rem;
+  font-size: 1.75rem;
 }
 
 h3 {
-  font-size: 1.5rem;
+  font-size: 1.35rem;
 }
 
 p {
@@ -143,7 +153,7 @@ a:hover {
   padding: 0.75rem 1.5rem;
   transition: all 0.2s ease;
   border: none;
-  font-size: 1rem;
+  font-size: 0.925rem;
 }
 
 .btn-primary,
@@ -289,11 +299,11 @@ a:hover {
 
 /* Spacing Utilities */
 .section-padding {
-  padding: 5rem 0;
+  padding: 3.5rem 0;
 }
 
 .section-padding-sm {
-  padding: 3rem 0;
+  padding: 2rem 0;
 }
 
 /* CTA Secondary Button (for dark backgrounds) */

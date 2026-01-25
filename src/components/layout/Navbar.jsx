@@ -13,49 +13,71 @@ export function Navbar() {
   const { itemCount } = useCart();
   const { getUnreadCount } = useMessaging();
   const unreadCount = getUnreadCount();
+  const isHomePage = location.pathname === '/';
 
-  const navLinks = [
+  const landingLinks = [
+    { href: '#features', label: 'Features' },
+    { href: '#categories', label: 'Categories' },
+    { href: '#how-it-works', label: 'How It Works' },
+    { href: '#testimonials', label: 'Testimonials' },
+    { href: '#pricing', label: 'Pricing' },
+  ];
+
+  const standardLinks = [
     { href: '/', label: 'Home' },
     { href: '/how-it-works', label: 'How It Works' },
     { href: '/pricing', label: 'Pricing' },
     { href: '/services', label: 'Services' },
   ];
 
+  const navLinks = isHomePage ? landingLinks : standardLinks;
+
   const isActive = (path) => location.pathname === path;
 
   return (
-    <BNavbar expand="md" className="bg-white border-bottom sticky-top shadow-sm" collapseOnSelect>
+    <BNavbar expand="md" className="bg-white border-bottom sticky-top shadow-sm py-2" collapseOnSelect>
       <Container>
         <BNavbar.Brand as={Link} to="/" className="d-flex align-items-center gap-2">
-          <div className="bg-primary text-white rounded p-1 d-flex align-items-center justify-content-center" style={{ width: 32, height: 32 }}>
-            <span className="fw-bold">M</span>
+          <div
+            className="rounded-2 d-flex align-items-center justify-content-center fw-bold text-white"
+            style={{
+              width: 32,
+              height: 32,
+              background: 'linear-gradient(135deg, #0A2540 0%, #0d3b66 100%)',
+              fontSize: '1rem'
+            }}
+          >
+            M
           </div>
-          <span className="fw-bold text-dark">MarketFlow</span>
+          <span className="fw-bold text-dark" style={{ letterSpacing: '-0.5px' }}>MarketFlow</span>
         </BNavbar.Brand>
 
-        <BNavbar.Toggle aria-controls="basic-navbar-nav" />
+        <BNavbar.Toggle aria-controls="basic-navbar-nav" className="border-0 shadow-none" />
 
         <BNavbar.Collapse id="basic-navbar-nav">
-          <Nav className="me-auto">
+          <Nav className="mx-auto gap-1">
             {navLinks.map((link) => (
               <Nav.Link
-                as={Link}
-                to={link.href}
-                key={link.href}
-                active={isActive(link.href)}
-                className={isActive(link.href) ? "text-primary fw-medium" : "text-secondary"}
+                as={isHomePage ? 'a' : Link}
+                to={isHomePage ? undefined : link.href}
+                href={isHomePage ? link.href : undefined}
+                key={link.label}
+                active={!isHomePage && isActive(link.href)}
+                className={`px-3 py-2 fw-medium ${(!isHomePage && isActive(link.href)) ? "text-primary" : "text-secondary"
+                  } nav-link-hover`}
+                style={{ fontSize: '0.95rem' }}
               >
                 {link.label}
               </Nav.Link>
             ))}
           </Nav>
 
-          <div className="d-flex align-items-center gap-2 mt-3 mt-md-0">
+          <div className="d-flex align-items-center gap-3 mt-3 mt-md-0">
             {/* Cart Icon */}
-            <Link to="/cart" className="position-relative btn btn-link text-decoration-none">
-              <ShoppingCart className="w-5 h-5 text-secondary" style={{ width: 20, height: 20 }} />
+            <Link to="/cart" className="position-relative text-secondary hover-primary">
+              <ShoppingCart size={20} />
               {itemCount > 0 && (
-                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
+                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary" style={{ fontSize: '0.6rem' }}>
                   {itemCount}
                 </span>
               )}
@@ -63,10 +85,10 @@ export function Navbar() {
 
             {/* Messages Icon */}
             {isAuthenticated && (
-              <Link to="/messages" className="position-relative btn btn-link text-decoration-none">
-                <MessageSquare className="w-5 h-5 text-secondary" style={{ width: 20, height: 20 }} />
+              <Link to="/messages" className="position-relative text-secondary hover-primary">
+                <MessageSquare size={20} />
                 {unreadCount > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.6rem' }}>
                     {unreadCount}
                   </span>
                 )}
@@ -80,11 +102,12 @@ export function Navbar() {
                     <div className="bg-light rounded-circle d-flex align-items-center justify-content-center" style={{ width: 32, height: 32 }}>
                       <User size={16} className="text-primary" />
                     </div>
-                    {user?.name}
+                    <span className="d-none d-lg-inline">{user?.name}</span>
                   </span>
                 }
                 id="user-nav-dropdown"
                 align="end"
+                className="user-dropdown"
               >
                 <NavDropdown.Item as={Link} to="/dashboard">Dashboard</NavDropdown.Item>
                 <NavDropdown.Item as={Link} to="/orders">Orders</NavDropdown.Item>
@@ -96,18 +119,47 @@ export function Navbar() {
                 <NavDropdown.Item onClick={logout} className="text-danger">Logout</NavDropdown.Item>
               </NavDropdown>
             ) : (
-              <div className="d-flex gap-2">
-                <Link to="/login">
-                  <Button variant="ghost">Log in</Button>
+              <div className="d-flex align-items-center gap-3">
+                <Link
+                  to="/login"
+                  className="text-decoration-none fw-semibold text-secondary small"
+                >
+                  Log in
                 </Link>
                 <Link to="/signup">
-                  <Button variant="default">Get Started</Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="px-4 fw-bold"
+                    style={{
+                      background: '#00B67A',
+                      borderRadius: '8px'
+                    }}
+                  >
+                    Join Now
+                  </Button>
                 </Link>
               </div>
             )}
           </div>
         </BNavbar.Collapse>
       </Container>
+      <style>{`
+        .nav-link-hover {
+          transition: all 0.2s ease;
+          border-radius: 6px;
+        }
+        .nav-link-hover:hover {
+          background-color: #f8f9fa;
+          color: #0A2540 !important;
+        }
+        .hover-primary:hover {
+          color: #0A2540 !important;
+        }
+        .user-dropdown .dropdown-toggle::after {
+          display: none;
+        }
+      `}</style>
     </BNavbar>
   );
 }

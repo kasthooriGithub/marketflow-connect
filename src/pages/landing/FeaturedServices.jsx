@@ -47,7 +47,7 @@ const featuredServices = [
 
 export default function FeaturedServices() {
     return (
-        <section className="section-padding" style={{ background: '#F7F7F7' }}>
+        <section id="features" className="section-padding" style={{ background: '#F7F7F7' }}>
             <Container>
                 <div className="d-flex justify-content-between align-items-end mb-5">
                     <div>

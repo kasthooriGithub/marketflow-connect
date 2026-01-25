@@ -37,30 +37,30 @@ export default function SearchBar() {
                         transition: 'all 0.2s ease'
                     }}
                 >
-                    <Search className="ms-4" size={20} style={{ color: '#62646A' }} />
+                    <Search className="ms-3" size={18} style={{ color: '#62646A' }} />
                     <input
                         type="text"
-                        className="form-control border-0 py-4 px-3"
+                        className="form-control border-0 py-3 px-3"
                         placeholder="Try 'SEO', 'Social Media Ads', 'Logo Design'..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
                         style={{
-                            fontSize: '1.1rem',
+                            fontSize: '1rem',
                             boxShadow: 'none',
                             color: '#404145'
                         }}
                     />
                     <button
                         type="submit"
-                        className="btn m-2 px-5 py-3 fw-semibold"
+                        className="btn m-1 px-4 py-2 fw-semibold"
                         style={{
                             background: '#0A2540',
                             border: 'none',
-                            borderRadius: '8px',
+                            borderRadius: '6px',
                             color: 'white',
-                            fontSize: '1rem'
+                            fontSize: '0.95rem'
                         }}
                     >
                         Search
