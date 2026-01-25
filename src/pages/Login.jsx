@@ -26,20 +26,17 @@ export default function Login() {
     const result = await login(email, password);
 
     if (result.success) {
-      toast({
-        title: 'Welcome back!',
-        description: 'You have successfully logged in.',
-      });
+      // ✅ Direct navigation – NO success toast
       navigate(from, { replace: true });
     } else {
+      // ❌ Wrong email / password → error toast
       toast({
         title: 'Login failed',
-        description: result.error || 'Invalid credentials',
+        description: result.error || 'Invalid email or password',
         variant: 'destructive',
       });
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
@@ -55,7 +52,7 @@ export default function Login() {
           </Link>
 
           <h1 className="h3 fw-bold text-dark mb-2">Welcome back</h1>
-          <p className="text-secondary mb-4">Enter your credentials to access your account</p>
+          <p className="text-secondary mb-4"> Please login to continue to your dashboard</p>
 
           <Form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
             <Form.Group>
@@ -120,12 +117,6 @@ export default function Login() {
               Sign up
             </Link>
           </p>
-
-          <div className="mt-4 p-3 bg-light rounded border">
-            <p className="small text-secondary mb-1">Demo credentials:</p>
-            <p className="smaller text-muted mb-0">Vendor: vendor@example.com / vendor123</p>
-            <p className="smaller text-muted mb-0">Client: client@example.com / client123</p>
-          </div>
         </div>
       </div>
 

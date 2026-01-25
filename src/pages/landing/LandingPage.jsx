@@ -1,4 +1,4 @@
-import Navbar from './Navbar';
+import { Navbar } from 'components/layout/Navbar';
 import Hero from './Hero';
 import CategoryGrid from './CategoryGrid';
 import FeaturedServices from './FeaturedServices';
