@@ -7,9 +7,19 @@ import { Label } from 'components/ui/label';
 import { Textarea } from 'components/ui/textarea';
 import { Switch } from 'components/ui/switch';
 import { Badge } from 'components/ui/badge';
-import { useVendorServices } from 'contexts/VendorServicesContext';
 import { toast } from 'sonner';
-import { Modal, Form } from 'react-bootstrap';
+import { Modal, Form, Spinner } from 'react-bootstrap';
+import { 
+  collection, 
+  addDoc, 
+  updateDoc, 
+  doc, 
+  serverTimestamp,
+  getDocs,
+  query
+} from 'firebase/firestore';
+import { db } from 'lib/firebase';
+import { useAuth } from 'contexts/AuthContext';
 
 const deliveryTimeOptions = [
   '1-2 days',
@@ -22,6 +32,20 @@ const deliveryTimeOptions = [
   'Ongoing',
 ];
 
+// Default categories if Firestore collection doesn't exist
+const DEFAULT_CATEGORIES = [
+  { id: 'web-development', name: 'Web Development', icon: '💻' },
+  { id: 'graphic-design', name: 'Graphic Design', icon: '🎨' },
+  { id: 'digital-marketing', name: 'Digital Marketing', icon: '📈' },
+  { id: 'content-writing', name: 'Content Writing', icon: '✍️' },
+  { id: 'video-editing', name: 'Video Editing', icon: '🎬' },
+  { id: 'seo', name: 'SEO Services', icon: '🔍' },
+  { id: 'consulting', name: 'Consulting', icon: '💼' },
+  { id: 'social-media', name: 'Social Media', icon: '📱' },
+  { id: 'mobile-app', name: 'Mobile App', icon: '📱' },
+  { id: 'ecommerce', name: 'E-commerce', icon: '🛒' },
+];
+
 const getInitialFormData = (service) => ({
   title: service?.title || '',
   description: service?.description || '',
@@ -30,30 +54,89 @@ const getInitialFormData = (service) => ({
   price: service?.price || 0,
   priceType: service?.priceType || 'one-time',
   deliveryTime: service?.deliveryTime || '3-5 days',
-  features: service?.features?.length ? [...service.features] : [''],
+  features: service?.features?.length ? [...service.features] : ['Professional quality work', 'Fast delivery', 'Unlimited revisions'],
   tags: service?.tags?.length ? [...service.tags] : [],
-  available: true,
+  is_active: service?.is_active !== undefined ? service.is_active : true,
+  featured: service?.featured || false,
 });
 
 export function AddServiceModal({ open, onOpenChange, editService }) {
   const navigate = useNavigate();
-  const { addService, updateService, categories } = useVendorServices();
-
+  const { user } = useAuth();
+  
   const [formData, setFormData] = useState(() => getInitialFormData(editService));
   const [tagInput, setTagInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
 
   const isEditMode = !!editService;
 
+  // Fetch categories from Firestore
   useEffect(() => {
+    const fetchCategories = async () => {
+      if (!open) return;
+      
+      setLoadingCategories(true);
+      try {
+        console.log('🔍 Fetching categories from Firestore...');
+        
+        // Try to fetch from Firestore
+        const categoriesQuery = query(collection(db, 'categories'));
+        const categoriesSnapshot = await getDocs(categoriesQuery);
+        
+        if (!categoriesSnapshot.empty) {
+          const categoriesList = categoriesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          console.log('✅ Categories fetched from Firestore:', categoriesList);
+          setCategories(categoriesList);
+        } else {
+          // If no categories in Firestore, use default ones
+          console.log('ℹ️ No categories in Firestore, using defaults');
+          setCategories(DEFAULT_CATEGORIES);
+          
+          // Optional: Create default categories in Firestore
+          try {
+            for (const category of DEFAULT_CATEGORIES) {
+              await addDoc(collection(db, 'categories'), {
+                name: category.name,
+                icon: category.icon,
+                description: `${category.name} services`,
+                created_at: serverTimestamp(),
+                updated_at: serverTimestamp(),
+              });
+            }
+            console.log('✅ Default categories created in Firestore');
+          } catch (createError) {
+            console.log('⚠️ Could not create default categories:', createError.message);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error fetching categories:', error);
+        console.log('⚠️ Using default categories due to error');
+        setCategories(DEFAULT_CATEGORIES);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
     if (open) {
+      fetchCategories();
       setFormData(getInitialFormData(editService));
       setTagInput('');
+      setValidationErrors({});
     }
   }, [open, editService]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear validation error when user types
+    if (validationErrors[field]) {
+      setValidationErrors(prev => ({ ...prev, [field]: null }));
+    }
   };
 
   const handleFeatureChange = (index, value) => {
@@ -84,45 +167,141 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
     setFormData(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }));
   };
 
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!formData.title.trim()) {
+      errors.title = 'Please enter a service title';
+    }
+    
+    if (!formData.description.trim()) {
+      errors.description = 'Please enter a description';
+    }
+    
+    if (!formData.category) {
+      errors.category = 'Please select a category';
+    }
+    
+    if (formData.price <= 0) {
+      errors.price = 'Please enter a valid price';
+    }
+    
+    // Check if at least one feature has text
+    const hasValidFeatures = formData.features.some(feature => feature.trim() !== '');
+    if (!hasValidFeatures) {
+      errors.features = 'Please add at least one feature';
+    }
+    
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('🎯 Form submit started');
+    console.log('📊 Form data:', formData);
+    console.log('👤 User:', user?.uid);
 
-    // Validation
-    if (!formData.title.trim()) { toast.error('Please enter a service title'); return; }
-    if (!formData.description.trim()) { toast.error('Please enter a description'); return; }
-    if (!formData.category) { toast.error('Please select a category'); return; }
-    if (formData.price <= 0) { toast.error('Please enter a valid price'); return; }
+    // Validate form
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      console.log('❌ Validation errors:', errors);
+      setValidationErrors(errors);
+      
+      // Show first error as toast
+      const firstErrorKey = Object.keys(errors)[0];
+      toast.error(errors[firstErrorKey]);
+      return;
+    }
 
     setIsSubmitting(true);
+    console.log('✅ Form validation passed');
 
     try {
       const cleanedFeatures = formData.features.filter(f => f.trim());
-      if (cleanedFeatures.length === 0) {
-        toast.error('Please add at least one feature');
-        setIsSubmitting(false);
-        return;
-      }
-
+      
       const serviceData = {
-        ...formData,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        longDescription: formData.longDescription?.trim() || formData.description.trim(),
+        category: formData.category,
+        price: Number(formData.price),
+        priceType: formData.priceType,
+        deliveryTime: formData.deliveryTime,
         features: cleanedFeatures,
-        longDescription: formData.longDescription || formData.description,
+        tags: formData.tags,
+        is_active: formData.is_active,
+        featured: formData.featured,
+        vendor_id: user?.uid,
+        vendor_name: user?.full_name || user?.name || 'Unknown Vendor',
+        vendor_email: user?.email || 'unknown@email.com',
+        vendor_photo_url: user?.photo_url || '',
+        average_rating: 0,
+        total_reviews: 0,
+        total_orders: 0,
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
       };
 
+      console.log('📦 Service data to save:', serviceData);
+
       if (isEditMode && editService) {
-        updateService(editService.id, serviceData);
+        console.log('✏️ Updating service:', editService.id);
+        const serviceRef = doc(db, 'services', editService.id);
+        await updateDoc(serviceRef, {
+          ...serviceData,
+          updated_at: serverTimestamp(),
+        });
+        
+        console.log('✅ Service updated successfully');
         toast.success('Service updated successfully!');
         onOpenChange(false);
       } else {
-        const newService = addService(serviceData);
+        console.log('🆕 Creating new service...');
+        
+        // Check if services collection exists, if not it will be auto-created
+        const docRef = await addDoc(collection(db, 'services'), serviceData);
+        
+        console.log('✅ Service created with ID:', docRef.id);
         toast.success('Service created successfully!');
+        
+        // Close modal first
         onOpenChange(false);
-        navigate(`/services/${newService.id}`);
+        
+        // Navigate to the new service page after a delay
+        setTimeout(() => {
+          navigate(`/services/${docRef.id}`);
+        }, 500);
       }
     } catch (error) {
-      toast.error(isEditMode ? 'Failed to update service.' : 'Failed to create service.');
+      console.error('❌ Error saving service:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
+      // Show specific error messages
+      if (error.code === 'permission-denied') {
+        toast.error('Permission denied. Please check Firestore rules.');
+      } else if (error.code === 'unavailable') {
+        toast.error('Network error. Please check your internet connection.');
+      } else if (error.code === 'not-found') {
+        toast.error('Services collection not found. Creating it now...');
+        // Try to create the collection by adding a document
+        try {
+          const tempRef = await addDoc(collection(db, 'services'), {
+            title: 'Temp Service',
+            vendor_id: user?.uid,
+            created_at: serverTimestamp(),
+          });
+          await updateDoc(doc(db, 'services', tempRef.id), { title: null });
+          toast.success('Collection created. Please try again.');
+        } catch (createError) {
+          toast.error('Failed to create collection. Check Firebase console.');
+        }
+      } else {
+        toast.error(isEditMode ? 'Failed to update service.' : 'Failed to create service.');
+      }
     } finally {
       setIsSubmitting(false);
+      console.log('🏁 Form submission finished');
     }
   };
 
@@ -142,6 +321,7 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
         </p>
 
         <Form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
+          {/* Title */}
           <Form.Group>
             <Label htmlFor="title">Service Title *</Label>
             <Input
@@ -150,24 +330,44 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
               value={formData.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
               maxLength={100}
+              disabled={isSubmitting}
+              className={validationErrors.title ? 'is-invalid' : ''}
             />
+            {validationErrors.title && (
+              <div className="invalid-feedback d-block">{validationErrors.title}</div>
+            )}
           </Form.Group>
 
+          {/* Category */}
           <Form.Group>
             <Label htmlFor="category">Category *</Label>
-            <Form.Select
-              value={formData.category}
-              onChange={(e) => handleInputChange('category', e.target.value)}
-            >
-              <option value="" disabled>Select a category</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.icon} {cat.name}
-                </option>
-              ))}
-            </Form.Select>
+            <div className="d-flex align-items-center gap-2">
+              <Form.Select
+                value={formData.category}
+                onChange={(e) => handleInputChange('category', e.target.value)}
+                disabled={isSubmitting || loadingCategories}
+                className={validationErrors.category ? 'is-invalid' : ''}
+              >
+                <option value="" disabled>Select a category</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.icon} {cat.name}
+                  </option>
+                ))}
+              </Form.Select>
+              {loadingCategories && <Spinner animation="border" size="sm" />}
+            </div>
+            {validationErrors.category && (
+              <div className="invalid-feedback d-block">{validationErrors.category}</div>
+            )}
+            {categories.length === 0 && !loadingCategories && (
+              <div className="text-warning small mt-1">
+                No categories found. Using default categories.
+              </div>
+            )}
           </Form.Group>
 
+          {/* Description */}
           <Form.Group>
             <Label htmlFor="description">Short Description *</Label>
             <Textarea
@@ -177,10 +377,18 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
               onChange={(e) => handleInputChange('description', e.target.value)}
               maxLength={200}
               rows={2}
+              disabled={isSubmitting}
+              className={validationErrors.description ? 'is-invalid' : ''}
             />
-            <Form.Text className="text-muted small d-block text-end">{formData.description.length}/200</Form.Text>
+            <div className="d-flex justify-content-between">
+              <Form.Text className="text-muted small">{formData.description.length}/200</Form.Text>
+              {validationErrors.description && (
+                <span className="text-danger small">{validationErrors.description}</span>
+              )}
+            </div>
           </Form.Group>
 
+          {/* Long Description */}
           <Form.Group>
             <Label htmlFor="longDescription">Detailed Description</Label>
             <Textarea
@@ -189,9 +397,11 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
               value={formData.longDescription}
               onChange={(e) => handleInputChange('longDescription', e.target.value)}
               rows={4}
+              disabled={isSubmitting}
             />
           </Form.Group>
 
+          {/* Price and Price Type */}
           <div className="row g-3">
             <div className="col-6">
               <Form.Group>
@@ -204,7 +414,12 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
                   placeholder="499"
                   value={formData.price || ''}
                   onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
+                  disabled={isSubmitting}
+                  className={validationErrors.price ? 'is-invalid' : ''}
                 />
+                {validationErrors.price && (
+                  <div className="invalid-feedback d-block">{validationErrors.price}</div>
+                )}
               </Form.Group>
             </div>
             <div className="col-6">
@@ -213,6 +428,7 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
                 <Form.Select
                   value={formData.priceType}
                   onChange={(e) => handleInputChange('priceType', e.target.value)}
+                  disabled={isSubmitting}
                 >
                   <option value="one-time">One-time</option>
                   <option value="monthly">Monthly</option>
@@ -222,11 +438,13 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
             </div>
           </div>
 
+          {/* Delivery Time */}
           <Form.Group>
             <Label htmlFor="deliveryTime">Delivery Time</Label>
             <Form.Select
               value={formData.deliveryTime}
               onChange={(e) => handleInputChange('deliveryTime', e.target.value)}
+              disabled={isSubmitting}
             >
               {deliveryTimeOptions.map((time) => (
                 <option key={time} value={time}>
@@ -236,15 +454,20 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
             </Form.Select>
           </Form.Group>
 
+          {/* Features */}
           <Form.Group>
             <Label>Features Included *</Label>
+            {validationErrors.features && (
+              <div className="text-danger small mb-2">{validationErrors.features}</div>
+            )}
             <div className="d-flex flex-column gap-2">
               {formData.features.map((feature, index) => (
                 <div key={index} className="d-flex gap-2">
                   <Input
-                    placeholder={`Feature ${index + 1}`}
+                    placeholder={`Feature ${index + 1} (e.g., Professional quality work)`}
                     value={feature}
                     onChange={(e) => handleFeatureChange(index, e.target.value)}
+                    disabled={isSubmitting}
                   />
                   {formData.features.length > 1 && (
                     <Button
@@ -253,6 +476,7 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
                       size="icon"
                       onClick={() => removeFeature(index)}
                       className="text-danger p-0"
+                      disabled={isSubmitting}
                     >
                       <Trash2 size={16} />
                     </Button>
@@ -265,6 +489,7 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
                 size="sm"
                 onClick={addFeature}
                 className="w-100"
+                disabled={isSubmitting}
               >
                 <Plus size={16} className="me-2" />
                 Add Feature
@@ -272,16 +497,28 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
             </div>
           </Form.Group>
 
+          {/* Tags */}
           <Form.Group>
             <Label>Tags</Label>
             <div className="d-flex gap-2 mb-2">
               <Input
-                placeholder="Add a tag"
+                placeholder="Add a tag (e.g., web-design, seo, marketing)"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTag();
+                  }
+                }}
+                disabled={isSubmitting}
               />
-              <Button type="button" variant="outline" onClick={addTag}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={addTag} 
+                disabled={isSubmitting}
+              >
                 Add
               </Button>
             </div>
@@ -292,8 +529,9 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
                     {tag}
                     <span
                       role="button"
-                      onClick={() => removeTag(tag)}
+                      onClick={() => !isSubmitting && removeTag(tag)}
                       className="ms-1 hover-text-danger cursor-pointer"
+                      style={{ cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
                     >
                       <X size={12} />
                     </span>
@@ -303,6 +541,7 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
             )}
           </Form.Group>
 
+          {/* Availability */}
           <div className="d-flex align-items-center justify-content-between p-3 border rounded bg-light">
             <div>
               <Label htmlFor="available" className="mb-0">Service Available</Label>
@@ -312,8 +551,9 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
             </div>
             <Switch
               id="available"
-              checked={formData.available}
-              onCheckedChange={(checked) => handleInputChange('available', checked)}
+              checked={formData.is_active}
+              onCheckedChange={(checked) => handleInputChange('is_active', checked)}
+              disabled={isSubmitting}
             />
           </div>
         </Form>
@@ -327,10 +567,20 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
         >
           Cancel
         </Button>
-        <Button type="button" onClick={handleSubmit} variant="primary" disabled={isSubmitting}>
-          {isSubmitting
-            ? (isEditMode ? 'Saving...' : 'Creating...')
-            : (isEditMode ? 'Save Changes' : 'Create Service')}
+        <Button 
+          type="button" 
+          variant="primary" 
+          disabled={isSubmitting || loadingCategories}
+          onClick={handleSubmit}
+        >
+          {isSubmitting ? (
+            <>
+              <Spinner animation="border" size="sm" className="me-2" />
+              {isEditMode ? 'Saving...' : 'Creating...'}
+            </>
+          ) : (
+            isEditMode ? 'Save Changes' : 'Create Service'
+          )}
         </Button>
       </Modal.Footer>
     </Modal>

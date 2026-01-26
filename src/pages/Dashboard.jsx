@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from 'contexts/AuthContext';
 import { Layout } from 'components/layout/Layout';
@@ -18,43 +18,221 @@ import {
   Briefcase
 } from 'lucide-react';
 import { Container, Row, Col, Card } from 'react-bootstrap';
+import {
+  collection,
+  query,
+  where,
+  getCountFromServer,
+  getDocs,
+  orderBy,
+  limit
+} from 'firebase/firestore';
+import { db } from 'lib/firebase';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
+  const [stats, setStats] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const clientStats = [
-    { label: 'Active Orders', value: '3', icon: ShoppingBag },
-    { label: 'Saved Services', value: '12', icon: Heart },
-    { label: 'Messages', value: '5', icon: MessageSquare },
-  ];
-
-  const vendorStats = [
-    { label: 'Active Services', value: '8', icon: Package },
-    { label: 'Total Orders', value: '47', icon: ShoppingBag },
-    { label: 'Revenue', value: '$12,450', icon: DollarSign },
-    { label: 'Profile Views', value: '1,234', icon: TrendingUp },
-  ];
-
-  const stats = user?.role === 'vendor' ? vendorStats : clientStats;
-
-  const vendorQuickLinks = [
+  const quickLinks = user?.role === 'vendor' ? [
     { to: '/my-services', label: 'My Services', icon: Briefcase },
     { to: '/orders', label: 'Orders', icon: ShoppingBag },
     { to: '/messages', label: 'Messages', icon: MessageSquare },
     { to: '/earnings', label: 'Earnings', icon: DollarSign },
     { to: '/settings', label: 'Settings', icon: Settings },
     { to: '/vendor/profile', label: 'My Profile', icon: Users },
-  ];
-
-  const clientQuickLinks = [
+  ] : [
     { to: '/services', label: 'Browse Services', icon: LayoutDashboard },
     { to: '/orders', label: 'My Orders', icon: ShoppingBag },
     { to: '/messages', label: 'Messages', icon: MessageSquare },
     { to: '/settings', label: 'Settings', icon: Settings },
   ];
 
-  const quickLinks = user?.role === 'vendor' ? vendorQuickLinks : clientQuickLinks;
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user?.uid) return;
+
+      try {
+        setLoading(true);
+        const uid = user.uid;
+        const role = user.role;
+
+        if (role === 'vendor') {
+          // Vendor stats: Active Services, Total Orders, Revenue, Profile Views
+          const servicesQuery = query(
+            collection(db, 'services'),
+            where('vendor_id', '==', uid),
+            where('is_active', '==', true)
+          );
+          const servicesSnapshot = await getCountFromServer(servicesQuery);
+          const activeServices = servicesSnapshot.data().count;
+
+          const ordersQuery = query(
+            collection(db, 'orders'),
+            where('vendor_id', '==', uid)
+          );
+          const ordersSnapshot = await getCountFromServer(ordersQuery);
+          const totalOrders = ordersSnapshot.data().count;
+
+          // Calculate revenue
+          const revenueQuery = query(
+            collection(db, 'orders'),
+            where('vendor_id', '==', uid),
+            where('status', '==', 'completed')
+          );
+          const revenueSnapshot = await getDocs(revenueQuery);
+          let revenue = 0;
+          revenueSnapshot.forEach(doc => {
+            revenue += doc.data().total_amount || 0;
+          });
+
+          // Profile views (if you have a 'profile_views' collection)
+          const viewsQuery = query(
+            collection(db, 'profile_views'),
+            where('vendor_id', '==', uid)
+          );
+          const viewsSnapshot = await getCountFromServer(viewsQuery);
+          const profileViews = viewsSnapshot.data().count;
+
+          setStats([
+            { label: 'Active Services', value: activeServices.toString(), icon: Package },
+            { label: 'Total Orders', value: totalOrders.toString(), icon: ShoppingBag },
+            { label: 'Revenue', value: `$${revenue.toLocaleString()}`, icon: DollarSign },
+            { label: 'Profile Views', value: profileViews.toLocaleString(), icon: TrendingUp },
+          ]);
+
+          // Recent activity for vendor
+          const recentOrdersQuery = query(
+            collection(db, 'orders'),
+            where('vendor_id', '==', uid),
+            orderBy('created_at', 'desc'),
+            limit(3)
+          );
+          const recentOrdersSnapshot = await getDocs(recentOrdersQuery);
+          const activities = recentOrdersSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              type: 'order',
+              title: 'New order received',
+              description: `${data.service_name || 'Service'} • ${formatTimeAgo(data.created_at)}`,
+              icon: ShoppingBag,
+              iconColor: 'warning'
+            };
+          });
+          setRecentActivity(activities);
+        } else {
+          // Client stats: Active Orders, Saved Services, Messages
+          const activeOrdersQuery = query(
+            collection(db, 'orders'),
+            where('client_id', '==', uid),
+            where('status', 'in', ['pending', 'in_progress'])
+          );
+          const activeOrdersSnapshot = await getCountFromServer(activeOrdersQuery);
+          const activeOrders = activeOrdersSnapshot.data().count;
+
+          const savedServicesQuery = query(
+            collection(db, 'saved_services'),
+            where('client_id', '==', uid)
+          );
+          const savedServicesSnapshot = await getCountFromServer(savedServicesQuery);
+          const savedServices = savedServicesSnapshot.data().count;
+
+          const messagesQuery = query(
+            collection(db, 'conversations'),
+            where('participants', 'array-contains', uid),
+            where('last_message_read', '==', false)
+          );
+          const messagesSnapshot = await getCountFromServer(messagesQuery);
+          const unreadMessages = messagesSnapshot.data().count;
+
+          setStats([
+            { label: 'Active Orders', value: activeOrders.toString(), icon: ShoppingBag },
+            { label: 'Saved Services', value: savedServices.toString(), icon: Heart },
+            { label: 'Unread Messages', value: unreadMessages.toString(), icon: MessageSquare },
+          ]);
+
+          // Recent activity for client
+          const recentOrdersQuery = query(
+            collection(db, 'orders'),
+            where('client_id', '==', uid),
+            orderBy('created_at', 'desc'),
+            limit(3)
+          );
+          const recentOrdersSnapshot = await getDocs(recentOrdersQuery);
+          const activities = recentOrdersSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              type: 'order',
+              title: data.status === 'completed' ? 'Order completed' : 'Order updated',
+              description: `${data.service_name || 'Service'} • ${formatTimeAgo(data.created_at)}`,
+              icon: data.status === 'completed' ? TrendingUp : ShoppingBag,
+              iconColor: data.status === 'completed' ? 'success' : 'primary'
+            };
+          });
+          setRecentActivity(activities);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [user]);
+
+  const formatTimeAgo = (timestamp) => {
+    if (!timestamp) return 'Recently';
+    
+    const now = new Date();
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) {
+      return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    } else if (diffDays < 7) {
+      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
+  const iconColors = {
+    warning: 'warning',
+    primary: 'primary',
+    success: 'success'
+  };
+
+  const iconBgColors = {
+    warning: 'bg-warning bg-opacity-25',
+    primary: 'bg-primary bg-opacity-25',
+    success: 'bg-success bg-opacity-25'
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="py-5">
+          <Container>
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          </Container>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -63,7 +241,7 @@ export default function Dashboard() {
           <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4">
             <div>
               <h1 className="h3 fw-bold text-dark mb-2">
-                Welcome back, {user?.name}!
+                Welcome back, {user?.full_name || user?.name}!
               </h1>
               <p className="text-secondary">
                 {user?.role === 'vendor'
@@ -102,35 +280,25 @@ export default function Dashboard() {
               <Card className="h-100 border">
                 <Card.Body className="p-4">
                   <h2 className="h5 fw-bold mb-4">Recent Activity</h2>
-                  <div className="d-flex flex-column gap-3">
-                    <div className="d-flex align-items-center gap-3 p-3 rounded bg-light">
-                      <div className="rounded-circle bg-warning bg-opacity-25 p-2 d-flex align-items-center justify-content-center" style={{ width: 40, height: 40 }}>
-                        <ShoppingBag size={20} className="text-warning" />
-                      </div>
-                      <div className="flex-grow-1">
-                        <p className="small fw-bold text-dark mb-0">New order received</p>
-                        <p className="small text-muted mb-0">SEO Audit Package • 2 hours ago</p>
-                      </div>
+                  {recentActivity.length > 0 ? (
+                    <div className="d-flex flex-column gap-3">
+                      {recentActivity.map((activity) => (
+                        <div key={activity.id} className="d-flex align-items-center gap-3 p-3 rounded bg-light">
+                          <div className={`rounded-circle p-2 d-flex align-items-center justify-content-center ${iconBgColors[activity.iconColor]}`} style={{ width: 40, height: 40 }}>
+                            <activity.icon size={20} className={`text-${iconColors[activity.iconColor]}`} />
+                          </div>
+                          <div className="flex-grow-1">
+                            <p className="small fw-bold text-dark mb-0">{activity.title}</p>
+                            <p className="small text-muted mb-0">{activity.description}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="d-flex align-items-center gap-3 p-3 rounded bg-light">
-                      <div className="rounded-circle bg-primary bg-opacity-25 p-2 d-flex align-items-center justify-content-center" style={{ width: 40, height: 40 }}>
-                        <MessageSquare size={20} className="text-primary" />
-                      </div>
-                      <div className="flex-grow-1">
-                        <p className="small fw-bold text-dark mb-0">New message</p>
-                        <p className="small text-muted mb-0">From SearchPro Digital • 5 hours ago</p>
-                      </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-muted mb-0">No recent activity</p>
                     </div>
-                    <div className="d-flex align-items-center gap-3 p-3 rounded bg-light">
-                      <div className="rounded-circle bg-success bg-opacity-25 p-2 d-flex align-items-center justify-content-center" style={{ width: 40, height: 40 }}>
-                        <TrendingUp size={20} className="text-success" />
-                      </div>
-                      <div className="flex-grow-1">
-                        <p className="small fw-bold text-dark mb-0">Order completed</p>
-                        <p className="small text-muted mb-0">Social Media Package • Yesterday</p>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </Card.Body>
               </Card>
             </Col>
