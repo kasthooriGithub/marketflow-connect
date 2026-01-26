@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AdminLayout } from 'components/admin/AdminLayout';
+import { AdminLayout } from 'components/layout/AdminLayout';
 import { Button } from 'components/ui/button';
 import { Search, MoreVertical, Mail, Ban, Trash2 } from 'lucide-react';
 import { Card, Table, Form, InputGroup, Dropdown, Badge } from 'react-bootstrap';

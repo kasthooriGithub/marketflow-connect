@@ -11,6 +11,7 @@ import {
     Timestamp,
     orderBy
 } from 'firebase/firestore';
+import { deleteDoc } from "firebase/firestore";
 
 export const serviceService = {
     async createService(vendorId, data) {
@@ -63,5 +64,9 @@ export const serviceService = {
             updated_at: Timestamp.now()
         };
         await updateDoc(serviceRef, updateData);
-    }
+    },
+    async deleteService(serviceId) {
+  const serviceRef = doc(db, "services", serviceId);
+  await deleteDoc(serviceRef);
+}
 };

@@ -12,8 +12,8 @@ import { AdminRoute } from "components/routes/AdminRoute";
 
 // Public Pages
 // Public Pages
-import LandingPage from "./pages/landing/LandingPage";
-import HowItWorks from "./pages/HowItWorks";
+import LandingPage from "./pages/LandingPage";
+import HowItWorks from "components/landing/HowItWorks";
 import Pricing from "./pages/Pricing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";

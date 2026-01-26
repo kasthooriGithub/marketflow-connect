@@ -33,7 +33,7 @@ export default function Signup() {
     } else {
       toast({
         title: 'Signup failed',
-        description: result.error || 'Could not create account',
+        description: result.message || 'Please try again.',
         variant: 'destructive',
       });
     }
@@ -42,9 +42,10 @@ export default function Signup() {
   };
 
   return (
-    <div className="d-flex min-vh-100">
+    // ✅ Full screen lock + no body scroll
+    <div className="d-flex vh-100 overflow-hidden">
       {/* Left side - Decorative (Hidden on mobile) */}
-      <div className="d-none d-lg-flex flex-grow-1 bg-primary align-items-center justify-content-center p-5 text-white text-center">
+      <div className="d-none d-lg-flex flex-grow-1 bg-primary align-items-center justify-content-center p-5 text-white text-center h-100">
         <div style={{ maxWidth: '400px' }}>
           <h2 className="display-6 fw-bold mb-3">Join MarketFlow Today</h2>
           <p className="opacity-75">
@@ -53,11 +54,17 @@ export default function Signup() {
         </div>
       </div>
 
-      {/* Right side - Form */}
-      <div className="flex-grow-1 d-flex align-items-center justify-content-center p-4">
-        <div className="w-100" style={{ maxWidth: '450px' }}>
+      {/* Right side - Form (scroll inside only if needed) */}
+      <div
+        className="flex-grow-1 h-100 overflow-auto p-4"
+        style={{ minHeight: 0 }} // ✅ important for flex overflow
+      >
+        <div className="w-100" style={{ maxWidth: '450px', margin: '0 auto' }}>
           <Link to="/" className="d-flex align-items-center gap-2 mb-4 text-decoration-none">
-            <div className="bg-primary text-white rounded d-flex align-items-center justify-content-center fw-bold" style={{ width: 32, height: 32 }}>
+            <div
+              className="bg-primary text-white rounded d-flex align-items-center justify-content-center fw-bold"
+              style={{ width: 32, height: 32 }}
+            >
               M
             </div>
             <span className="fw-bold fs-4 text-dark">MarketFlow</span>
@@ -71,59 +78,47 @@ export default function Signup() {
               <Label className="mb-2">I am a...</Label>
               <div className="d-flex gap-3">
                 <div
-                  className={`flex-fill p-3 border rounded pointer cursor-pointer ${role === 'client' ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary-subtle'}`}
+                  className={`flex-fill p-3 border rounded pointer cursor-pointer ${
+                    role === 'client' ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary-subtle'
+                  }`}
                   onClick={() => setRole('client')}
                   role="button"
                 >
-                  <div className="d-flex align-items-center gap-2 mb-1">
-                    <Form.Check
-                      type="radio"
-                      name="role"
-                      id="client"
-                      checked={role === 'client'}
-                      onChange={() => setRole('client')}
-                      className="m-0"
-                    />
-                    <User size={20} className="text-primary" />
-                    <span className="fw-medium">Client</span>
+                  <div className="d-flex align-items-center gap-2">
+                    <User size={18} />
+                    <div>
+                      <div className="fw-semibold">Client</div>
+                      <div className="text-secondary small">Looking for services</div>
+                    </div>
                   </div>
-                  <p className="small text-muted mb-0 ms-4 ps-1">Looking for services</p>
                 </div>
 
                 <div
-                  className={`flex-fill p-3 border rounded pointer cursor-pointer ${role === 'vendor' ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary-subtle'}`}
+                  className={`flex-fill p-3 border rounded pointer cursor-pointer ${
+                    role === 'vendor' ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary-subtle'
+                  }`}
                   onClick={() => setRole('vendor')}
                   role="button"
                 >
-                  <div className="d-flex align-items-center gap-2 mb-1">
-                    <Form.Check
-                      type="radio"
-                      name="role"
-                      id="vendor"
-                      checked={role === 'vendor'}
-                      onChange={() => setRole('vendor')}
-                      className="m-0"
-                    />
-                    <Building2 size={20} className="text-primary" />
-                    <span className="fw-medium">Vendor</span>
+                  <div className="d-flex align-items-center gap-2">
+                    <Building2 size={18} />
+                    <div>
+                      <div className="fw-semibold">Vendor</div>
+                      <div className="text-secondary small">Offering services</div>
+                    </div>
                   </div>
-                  <p className="small text-muted mb-0 ms-4 ps-1">Offering services</p>
                 </div>
               </div>
             </Form.Group>
 
             <Form.Group>
-              <Label htmlFor="name">{role === 'vendor' ? 'Business Name' : 'Full Name'}</Label>
+              <Label className="mb-2">Full Name</Label>
               <div className="position-relative">
-                <div className="position-absolute top-50 start-0 translate-middle-y ps-3">
-                  {role === 'vendor' ? <Building2 size={18} className="text-secondary" /> : <User size={18} className="text-secondary" />}
-                </div>
+                <User className="position-absolute top-50 translate-middle-y text-secondary" style={{ left: 12 }} size={16} />
                 <Input
-                  id="name"
-                  type="text"
-                  placeholder={role === 'vendor' ? 'Your Agency Name' : 'John Doe'}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  placeholder="John Doe"
                   className="ps-5"
                   required
                 />
@@ -131,17 +126,14 @@ export default function Signup() {
             </Form.Group>
 
             <Form.Group>
-              <Label htmlFor="email">Email</Label>
+              <Label className="mb-2">Email</Label>
               <div className="position-relative">
-                <div className="position-absolute top-50 start-0 translate-middle-y ps-3">
-                  <Mail size={18} className="text-secondary" />
-                </div>
+                <Mail className="position-absolute top-50 translate-middle-y text-secondary" style={{ left: 12 }} size={16} />
                 <Input
-                  id="email"
                   type="email"
-                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
                   className="ps-5"
                   required
                 />
@@ -149,19 +141,15 @@ export default function Signup() {
             </Form.Group>
 
             <Form.Group>
-              <Label htmlFor="password">Password</Label>
+              <Label className="mb-2">Password</Label>
               <div className="position-relative">
-                <div className="position-absolute top-50 start-0 translate-middle-y ps-3">
-                  <Lock size={18} className="text-secondary" />
-                </div>
+                <Lock className="position-absolute top-50 translate-middle-y text-secondary" style={{ left: 12 }} size={16} />
                 <Input
-                  id="password"
                   type="password"
-                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
                   className="ps-5"
-                  minLength={6}
                   required
                 />
               </div>
@@ -169,35 +157,34 @@ export default function Signup() {
 
             <Button
               type="submit"
-              variant="gradient"
-              size="lg"
-              className="w-100 mt-2"
               disabled={isLoading}
+              className="w-100 mt-2 fw-bold"
+              style={{ background: '#0A2540', borderRadius: '10px', padding: '12px 16px' }}
             >
               {isLoading ? (
-                <>
-                  <Loader2 className="me-2 animate-spin" size={20} />
-                  Creating account...
-                </>
+                <span className="d-inline-flex align-items-center gap-2">
+                  <Loader2 size={18} className="spin" /> Creating...
+                </span>
               ) : (
-                <>
-                  Create Account <ArrowRight className="ms-2" size={20} />
-                </>
+                <span className="d-inline-flex align-items-center justify-content-center gap-2">
+                  Create Account <ArrowRight size={18} />
+                </span>
               )}
             </Button>
-          </Form>
 
-          <p className="text-center text-secondary mt-4">
-            Already have an account?{' '}
-            <Link to="/login" className="text-primary fw-medium text-decoration-none hover-underline">
-              Sign in
-            </Link>
-          </p>
+            <div className="text-center mt-2">
+              <span className="text-secondary">Already have an account? </span>
+              <Link to="/login" className="fw-semibold text-decoration-none">
+                Log in
+              </Link>
+            </div>
+          </Form>
         </div>
       </div>
+
       <style>{`
-        .cursor-pointer { cursor: pointer; }
-        .hover-underline:hover { text-decoration: underline !important; }
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );

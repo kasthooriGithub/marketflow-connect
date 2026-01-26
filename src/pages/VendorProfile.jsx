@@ -5,7 +5,7 @@ import { Layout } from 'components/layout/Layout';
 import { Button } from 'components/ui/button';
 import { Tab, Nav } from 'react-bootstrap';
 import { services } from 'data/services';
-import { ServiceCard } from 'components/services/ServiceCard';
+import { ServiceCard } from 'components/common/ServiceCard';
 import { AddServiceModal } from 'components/vendor/AddServiceModal';
 import { AddPortfolioModal } from 'components/vendor/AddPortfolioModal';
 import { useVendorServices } from 'contexts/VendorServicesContext';
