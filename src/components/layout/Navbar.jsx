@@ -73,15 +73,6 @@ export function Navbar() {
           </Nav>
 
           <div className="d-flex align-items-center gap-3 mt-3 mt-md-0">
-            {/* Cart Icon */}
-            <Link to="/cart" className="position-relative text-secondary hover-primary">
-              <ShoppingCart size={20} />
-              {itemCount > 0 && (
-                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary" style={{ fontSize: '0.6rem' }}>
-                  {itemCount}
-                </span>
-              )}
-            </Link>
 
             {/* Messages Icon */}
             {isAuthenticated && (

@@ -1,4 +1,4 @@
-import { AdminLayout } from 'components/admin/AdminLayout';
+import { AdminLayout } from 'components/layout/AdminLayout';
 import { Button } from 'components/ui/button';
 import { Card, Form, Row, Col } from 'react-bootstrap';
 import { Save, Globe, DollarSign, Settings as SettingsIcon } from 'lucide-react';

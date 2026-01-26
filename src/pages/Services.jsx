@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Layout } from 'components/layout/Layout';
-import { ServiceCard } from 'components/services/ServiceCard';
+import { ServiceCard } from 'components/common/ServiceCard';
 import { Button } from 'components/ui/button';
 import { Input } from 'components/ui/input';
 import { services, categories } from 'data/services';

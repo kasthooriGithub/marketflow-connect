@@ -1,4 +1,4 @@
-import { AdminLayout } from 'components/admin/AdminLayout';
+import { AdminLayout } from 'components/layout/AdminLayout';
 import { Users, Building2, Package, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 import { Row, Col, Card, Table, Badge } from 'react-bootstrap';
 

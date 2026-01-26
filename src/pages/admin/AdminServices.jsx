@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AdminLayout } from 'components/admin/AdminLayout';
+import { AdminLayout } from 'components/layout/AdminLayout';
 import { Button } from 'components/ui/button';
 import { Search, MoreVertical, Eye, Edit, Trash2 } from 'lucide-react';
 import { services as mockServices } from 'data/services';

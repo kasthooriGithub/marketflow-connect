@@ -1,12 +1,12 @@
 import { Navbar } from 'components/layout/Navbar';
-import Hero from './Hero';
-import CategoryGrid from './CategoryGrid';
-import FeaturedServices from './FeaturedServices';
-import HowItWorks from './HowItWorks';
-import Pricing from './Pricing';
-import Testimonials from './Testimonials';
-import CTA from './CTA';
-import Footer from './Footer';
+import Hero from 'components/landing/Hero';
+import CategoryGrid from 'components/landing/CategoryGrid';
+import FeaturedServices from 'components/landing/FeaturedServices';
+import HowItWorks from 'components/landing/HowItWorks';
+import Pricing from 'components/landing/PricingSection';
+import Testimonials from 'components/landing/Testimonials';
+import CTA from 'components/landing/CTA';
+import Footer from 'components/layout/MarketingFooter';
 
 const LandingPage = () => {
     return (

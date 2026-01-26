@@ -135,10 +135,23 @@ export function VendorServicesProvider({ children }) {
   };
 
   const updateService = async (id, updates) => {
+    await serviceService.updateService(id, {
+      title: updates.title,
+      description: updates.description,
+      category: updates.category,
+      pricing_type: updates.priceType === 'monthly' ? 'subscription' : 'one-time',
+      base_price: updates.price,
+      availability: updates.available,
+      images: ['/placeholder.svg'],
+    });
+
     setAllServices(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
   };
 
+
+
   const deleteService = async (id) => {
+    await serviceService.deleteService(id);
     setAllServices(prev => prev.filter(s => s.id !== id));
   };
 
