@@ -9,39 +9,43 @@ import { MessagingProvider } from "contexts/MessagingContext";
 import { VendorServicesProvider } from "contexts/VendorServicesContext";
 import { ProtectedRoute } from "components/routes/ProtectedRoute";
 import { AdminRoute } from "components/routes/AdminRoute";
+import { PublicRoute } from "components/routes/PublicRoute";
+import { Layout } from "components/layout/Layout";
 
 // Public Pages
 // Public Pages
-import LandingPage from "./pages/LandingPage";
-import HowItWorks from "components/landing/HowItWorks";
-import Pricing from "./pages/Pricing";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import NotFound from "./pages/NotFound";
+// Public Pages
+import LandingPage from "./pages/public/Landing";
+import HowItWorks from "./pages/public/HowItWorks";
+import Pricing from "./pages/public/Pricing";
+import Login from "./pages/public/Login";
+import Signup from "./pages/public/Signup";
+import NotFound from "./pages/public/NotFound";
 
 // Protected Pages
-import Services from "./pages/Services";
-import ServiceDetail from "./pages/ServiceDetail";
+import Services from "./pages/public/ServicesPublic";
+import ServiceDetail from "./pages/public/ServiceDetail";
 import Dashboard from "./pages/Dashboard";
-import VendorProfile from "./pages/VendorProfile";
-import PublicVendorProfile from "./pages/PublicVendorProfile";
-import CategoryVendors from "./pages/CategoryVendors";
-import Cart from "./pages/Cart";
-import Checkout from "./pages/Checkout";
-import OrderConfirmation from "./pages/OrderConfirmation";
-import Messages from "./pages/Messages";
-import Orders from "./pages/Orders";
-import MyServices from "./pages/MyServices";
-import Settings from "./pages/Settings";
-import Earnings from "./pages/Earnings";
+import VendorProfile from "./pages/vendor/VendorProfile";
+import PublicVendorProfile from "./pages/public/PublicVendorProfile";
+import VendorGuide from "./pages/vendor/VendorGuide";
+import CategoryVendors from "./pages/public/CategoryVendors";
+import Cart from "./pages/client/Cart";
+import Checkout from "./pages/client/Checkout";
+import OrderConfirmation from "./pages/client/OrderConfirmation";
+import Messages from "./pages/client/Messages";
+import Orders from "./pages/client/Orders";
+import MyServices from "./pages/vendor/VendorServices";
+import Settings from "./pages/client/Settings";
+import Earnings from "./pages/vendor/Earnings";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminVendors from "./pages/admin/AdminVendors";
-import AdminServices from "./pages/admin/AdminServices";
-import AdminSettings from "./pages/admin/AdminSettings";
+import AdminUsers from "./pages/admin/Users";
+import AdminVendors from "./pages/admin/Vendors";
+import AdminServices from "./pages/admin/Services";
+import AdminSettings from "./pages/admin/Settings";
 
 const queryClient = new QueryClient();
 
@@ -56,12 +60,36 @@ const App = () => (
               <Sonner />
               <BrowserRouter>
                 <Routes>
-                  {/* Public Routes */}
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/how-it-works" element={<HowItWorks />} />
-                  <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/signup" element={<Signup />} />
+                  {/* Public Routes - Only for guests */}
+                  <Route path="/" element={
+                    <PublicRoute>
+                      <LandingPage />
+                    </PublicRoute>
+                  } />
+                  <Route path="/login" element={
+                    <PublicRoute>
+                      <Login />
+                    </PublicRoute>
+                  } />
+                  <Route path="/signup" element={
+                    <PublicRoute>
+                      <Signup />
+                    </PublicRoute>
+                  } />
+
+                  {/* Publicly accessible pages (Guest Only) */}
+                  <Route path="/how-it-works" element={
+                    <PublicRoute>
+                      <Layout>
+                        <HowItWorks />
+                      </Layout>
+                    </PublicRoute>
+                  } />
+                  <Route path="/pricing" element={
+                    <PublicRoute>
+                      <Pricing />
+                    </PublicRoute>
+                  } />
 
                   {/* Services & Vendors - public browsing */}
                   <Route path="/services" element={<Services />} />
@@ -93,6 +121,11 @@ const App = () => (
                       <Messages />
                     </ProtectedRoute>
                   } />
+                  <Route path="/messages/:conversationId" element={
+                    <ProtectedRoute>
+                      <Messages />
+                    </ProtectedRoute>
+                  } />
                   <Route path="/orders" element={
                     <ProtectedRoute>
                       <Orders />
@@ -118,6 +151,11 @@ const App = () => (
                   <Route path="/earnings" element={
                     <ProtectedRoute allowedRoles={['vendor']}>
                       <Earnings />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/vendor/guide" element={
+                    <ProtectedRoute allowedRoles={['vendor']}>
+                      <VendorGuide />
                     </ProtectedRoute>
                   } />
 

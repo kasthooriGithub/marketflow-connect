@@ -1,26 +1,72 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Layout } from 'components/layout/Layout';
 import { ServiceCard } from 'components/common/ServiceCard';
 import { Button } from 'components/ui/button';
 import { Input } from 'components/ui/input';
-import { services, categories } from 'data/services';
+import { db } from 'lib/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { Container, Row, Col } from 'react-bootstrap';
 
 export default function Services() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
+  const [services, setServices] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const selectedCategory = searchParams.get('category') || 'all';
+  const selectedCategoryId = searchParams.get('category') || 'all';
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch categories from Firestore
+        const categoriesSnapshot = await getDocs(collection(db, 'categories'));
+        const categoriesData = categoriesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setCategories(categoriesData);
+
+        // Fetch services from Firestore
+        let servicesQuery = query(
+          collection(db, 'services'),
+          where('is_active', '==', true)
+        );
+
+        // If a specific category is selected, filter by category doc ID
+        if (selectedCategoryId !== 'all') {
+          servicesQuery = query(
+            collection(db, 'services'),
+            where('is_active', '==', true),
+            where('category', '==', selectedCategoryId)
+          );
+        }
+
+        const querySnapshot = await getDocs(servicesQuery);
+        const servicesData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setServices(servicesData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedCategoryId]);
 
   const filteredServices = services.filter(service => {
-    const matchesCategory = selectedCategory === 'all' || service.category === selectedCategory;
     const matchesSearch = searchQuery === '' ||
-      service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      service.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      service.vendorName.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+      service.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      service.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      service.vendor_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
   });
 
   const handleCategoryChange = (categoryId) => {
@@ -62,7 +108,7 @@ export default function Services() {
 
           <div className="d-flex flex-wrap justify-content-center gap-2">
             <Button
-              variant={selectedCategory === 'all' ? 'gradient' : 'secondary'}
+              variant={selectedCategoryId === 'all' ? 'gradient' : 'secondary'}
               size="sm"
               onClick={() => handleCategoryChange('all')}
             >
@@ -71,7 +117,7 @@ export default function Services() {
             {categories.map((category) => (
               <Button
                 key={category.id}
-                variant={selectedCategory === category.id ? 'gradient' : 'secondary'}
+                variant={selectedCategoryId === category.id ? 'gradient' : 'secondary'}
                 size="sm"
                 onClick={() => handleCategoryChange(category.id)}
               >
@@ -83,7 +129,12 @@ export default function Services() {
       </div>
 
       <Container className="mb-5">
-        {filteredServices.length > 0 ? (
+        {isLoading ? (
+          <div className="text-center py-5">
+            <div className="spinner-border text-primary" role="status"></div>
+            <p className="mt-2 text-muted">Loading services...</p>
+          </div>
+        ) : filteredServices.length > 0 ? (
           <>
             <p className="text-muted mb-4">
               Showing {filteredServices.length} service{filteredServices.length !== 1 ? 's' : ''}

@@ -15,27 +15,40 @@ export function Navbar() {
   const unreadCount = getUnreadCount();
   const isHomePage = location.pathname === '/';
 
-  const landingLinks = [
+  const clientLinks = [
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/services', label: 'Browse Services' },
+    { href: '/orders', label: 'My Orders' },
+  ];
+
+  const vendorLinks = [
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/my-services', label: 'My Services' },
+    { href: '/orders', label: 'Orders' },
+    { href: '/vendor/guide', label: 'Vendor Guide' },
+  ];
+
+  const guestLinks = isHomePage ? [
     { href: '#features', label: 'Features' },
     { href: '#categories', label: 'Categories' },
     { href: '#how-it-works', label: 'How It Works' },
-    { href: '#testimonials', label: 'Testimonials' },
     { href: '#pricing', label: 'Pricing' },
-  ];
-
-  const standardLinks = [
+  ] : [
     { href: '/', label: 'Home' },
     { href: '/how-it-works', label: 'How It Works' },
     { href: '/pricing', label: 'Pricing' },
     { href: '/services', label: 'Services' },
   ];
 
-  const navLinks = isHomePage ? landingLinks : standardLinks;
+  let navLinks = guestLinks;
+  if (isAuthenticated) {
+    navLinks = user?.role === 'vendor' ? vendorLinks : clientLinks;
+  }
 
   const isActive = (path) => location.pathname === path;
 
   return (
-    <BNavbar expand="md" className="bg-white border-bottom sticky-top shadow-sm py-2" collapseOnSelect>
+    <BNavbar expand="md" className="bg-white border-bottom sticky-top shadow-sm py-2" collapseOnSelect style={{ zIndex: 1050 }}>
       <Container>
         <BNavbar.Brand as={Link} to="/" className="d-flex align-items-center gap-2">
           <div
@@ -74,12 +87,41 @@ export function Navbar() {
 
           <div className="d-flex align-items-center gap-3 mt-3 mt-md-0">
 
+            {/* Cart Icon */}
+            {isAuthenticated && user?.role === 'client' && (
+              <Link to="/cart" className="position-relative text-secondary hover-primary">
+                <ShoppingCart size={20} />
+                {itemCount > 0 && (
+                  <span
+                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary"
+                    style={{
+                      fontSize: '0.65rem',
+                      padding: '0.25em 0.4em',
+                      minWidth: '1.2rem',
+                      transform: 'translate(-20%, -30%)',
+                      zIndex: 2
+                    }}
+                  >
+                    {itemCount}
+                  </span>
+                )}
+              </Link>
+            )}
+
             {/* Messages Icon */}
             {isAuthenticated && (
               <Link to="/messages" className="position-relative text-secondary hover-primary">
                 <MessageSquare size={20} />
                 {unreadCount > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.6rem' }}>
+                  <span
+                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                    style={{
+                      fontSize: '0.6rem',
+                      padding: '0.25em 0.4em',
+                      minWidth: '1.2rem',
+                      transform: 'translate(-20%, -30%)'
+                    }}
+                  >
                     {unreadCount}
                   </span>
                 )}

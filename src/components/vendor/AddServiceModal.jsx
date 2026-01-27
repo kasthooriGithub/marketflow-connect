@@ -9,11 +9,11 @@ import { Switch } from 'components/ui/switch';
 import { Badge } from 'components/ui/badge';
 import { toast } from 'sonner';
 import { Modal, Form, Spinner } from 'react-bootstrap';
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  doc, 
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  doc,
   serverTimestamp,
   getDocs,
   query
@@ -63,7 +63,7 @@ const getInitialFormData = (service) => ({
 export function AddServiceModal({ open, onOpenChange, editService }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  
+
   const [formData, setFormData] = useState(() => getInitialFormData(editService));
   const [tagInput, setTagInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,15 +77,15 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
   useEffect(() => {
     const fetchCategories = async () => {
       if (!open) return;
-      
+
       setLoadingCategories(true);
       try {
         console.log('🔍 Fetching categories from Firestore...');
-        
+
         // Try to fetch from Firestore
         const categoriesQuery = query(collection(db, 'categories'));
         const categoriesSnapshot = await getDocs(categoriesQuery);
-        
+
         if (!categoriesSnapshot.empty) {
           const categoriesList = categoriesSnapshot.docs.map(doc => ({
             id: doc.id,
@@ -97,7 +97,7 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
           // If no categories in Firestore, use default ones
           console.log('ℹ️ No categories in Firestore, using defaults');
           setCategories(DEFAULT_CATEGORIES);
-          
+
           // Optional: Create default categories in Firestore
           try {
             for (const category of DEFAULT_CATEGORIES) {
@@ -169,29 +169,29 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
 
   const validateForm = () => {
     const errors = {};
-    
+
     if (!formData.title.trim()) {
       errors.title = 'Please enter a service title';
     }
-    
+
     if (!formData.description.trim()) {
       errors.description = 'Please enter a description';
     }
-    
+
     if (!formData.category) {
       errors.category = 'Please select a category';
     }
-    
+
     if (formData.price <= 0) {
       errors.price = 'Please enter a valid price';
     }
-    
+
     // Check if at least one feature has text
     const hasValidFeatures = formData.features.some(feature => feature.trim() !== '');
     if (!hasValidFeatures) {
       errors.features = 'Please add at least one feature';
     }
-    
+
     return errors;
   };
 
@@ -206,7 +206,7 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
     if (Object.keys(errors).length > 0) {
       console.log('❌ Validation errors:', errors);
       setValidationErrors(errors);
-      
+
       // Show first error as toast
       const firstErrorKey = Object.keys(errors)[0];
       toast.error(errors[firstErrorKey]);
@@ -218,12 +218,15 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
 
     try {
       const cleanedFeatures = formData.features.filter(f => f.trim());
-      
+
+      const selectedCategory = categories.find(cat => cat.id === formData.category);
+
       const serviceData = {
         title: formData.title.trim(),
         description: formData.description.trim(),
         longDescription: formData.longDescription?.trim() || formData.description.trim(),
         category: formData.category,
+        category_slug: selectedCategory?.slug || '',
         price: Number(formData.price),
         priceType: formData.priceType,
         deliveryTime: formData.deliveryTime,
@@ -251,22 +254,22 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
           ...serviceData,
           updated_at: serverTimestamp(),
         });
-        
+
         console.log('✅ Service updated successfully');
         toast.success('Service updated successfully!');
         onOpenChange(false);
       } else {
         console.log('🆕 Creating new service...');
-        
+
         // Check if services collection exists, if not it will be auto-created
         const docRef = await addDoc(collection(db, 'services'), serviceData);
-        
+
         console.log('✅ Service created with ID:', docRef.id);
         toast.success('Service created successfully!');
-        
+
         // Close modal first
         onOpenChange(false);
-        
+
         // Navigate to the new service page after a delay
         setTimeout(() => {
           navigate(`/services/${docRef.id}`);
@@ -276,7 +279,7 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
       console.error('❌ Error saving service:', error);
       console.error('Error code:', error.code);
       console.error('Error message:', error.message);
-      
+
       // Show specific error messages
       if (error.code === 'permission-denied') {
         toast.error('Permission denied. Please check Firestore rules.');
@@ -513,10 +516,10 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
                 }}
                 disabled={isSubmitting}
               />
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={addTag} 
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addTag}
                 disabled={isSubmitting}
               >
                 Add
@@ -567,9 +570,9 @@ export function AddServiceModal({ open, onOpenChange, editService }) {
         >
           Cancel
         </Button>
-        <Button 
-          type="button" 
-          variant="primary" 
+        <Button
+          type="button"
+          variant="primary"
           disabled={isSubmitting || loadingCategories}
           onClick={handleSubmit}
         >

@@ -23,16 +23,17 @@ export function MessagingProvider({ children }) {
 
         const mappedConvs = firestoreConvs.map(fc => ({
           id: fc.id,
-          serviceId: fc.serviceId,
-          serviceName: 'Service Inquiry', // placeholder, ideally fetch service
+          serviceId: fc.service_id,
+          serviceName: fc.service_name || 'Service Inquiry',
           participants: {
-            clientId: fc.participants[0], // Assumption: 0=client, 1=vendor. Needs robust logic.
-            clientName: 'Client',
-            vendorId: fc.participants[1],
-            vendorName: 'Vendor'
+            clientId: fc.client_id,
+            clientName: fc.client_id === user.uid ? (user.name || user.full_name || 'Me') : 'Client',
+            vendorId: fc.vendor_id,
+            vendorName: fc.vendor_id === user.uid ? (user.name || user.full_name || 'Me') : 'Vendor'
           },
-          createdAt: fc.created_at.toDate().toISOString(),
-          updatedAt: fc.updated_at.toDate().toISOString(),
+          lastMessage: fc.lastMessage,
+          createdAt: fc.created_at?.toDate ? fc.created_at.toDate().toISOString() : new Date().toISOString(),
+          updatedAt: fc.updated_at?.toDate ? fc.updated_at.toDate().toISOString() : new Date().toISOString(),
         }));
 
         setConversations(mappedConvs);

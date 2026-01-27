@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
 import {
   Star, Clock, Check, ArrowLeft, MessageSquare, Shield,
@@ -9,25 +9,58 @@ import { Layout } from 'components/layout/Layout';
 import { Button } from 'components/ui/button';
 import { Badge } from 'components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from 'components/ui/tabs';
-import { getServiceById } from 'data/services';
-import { getVendorById, vendors } from 'data/vendors';
+import { db } from 'lib/firebase';
+import { doc, getDoc, serverTimestamp, setDoc, addDoc, collection } from 'firebase/firestore';
 import { useAuth } from 'contexts/AuthContext';
 import { useCart } from 'contexts/CartContext';
 import { useMessaging } from 'contexts/MessagingContext';
+import { orderService } from 'services/orderService';
+import { chatService } from 'services/chatService';
 import { toast } from 'sonner';
-import { Container, Row, Col, Card, Tab } from 'react-bootstrap';
+import { Container, Row, Col, Card, Modal } from 'react-bootstrap';
 
 export default function ServiceDetail() {
   const { id } = useParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { addToCart } = useCart();
-  const { startConversation, setActiveConversation } = useMessaging();
+  const { setActiveConversation } = useMessaging();
   const navigate = useNavigate();
   const [selectedTier, setSelectedTier] = useState('standard');
   const [activeTab, setActiveTab] = useState('description');
+  const [service, setService] = useState(null);
+  const [vendor, setVendor] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
-  const service = getServiceById(id || '');
-  const vendor = service ? getVendorById(service.vendorId) || vendors.find(v => v.name === service.vendorName) : null;
+  useEffect(() => {
+    const fetchServiceData = async () => {
+      if (!id) return;
+      setIsLoading(true);
+      try {
+        const serviceDoc = await getDoc(doc(db, 'services', id));
+        if (serviceDoc.exists()) {
+          const serviceData = { id: serviceDoc.id, ...serviceDoc.data() };
+          setService(serviceData);
+
+          // Fetch vendor details from users collection
+          if (serviceData.vendor_id) {
+            const vendorDoc = await getDoc(doc(db, 'users', serviceData.vendor_id));
+            if (vendorDoc.exists()) {
+              setVendor({ id: vendorDoc.id, ...vendorDoc.data() });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching service:", error);
+        toast.error("Failed to load service details");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchServiceData();
+  }, [id]);
 
   const generateTiers = () => {
     if (!service) return [];
@@ -40,7 +73,7 @@ export default function ServiceDetail() {
         description: 'Essential package for getting started',
         deliveryTime: service.deliveryTime === 'Ongoing' ? '7 days' : service.deliveryTime,
         revisions: 1,
-        features: service.features.slice(0, 3),
+        features: service.features?.slice(0, 3) || [],
       },
       {
         id: 'standard',
@@ -49,7 +82,7 @@ export default function ServiceDetail() {
         description: 'Most popular choice for professionals',
         deliveryTime: service.deliveryTime === 'Ongoing' ? '5 days' : service.deliveryTime.replace(/\d+/, (match) => String(Math.max(1, parseInt(match) - 2))),
         revisions: 3,
-        features: service.features.slice(0, 5),
+        features: service.features?.slice(0, 5) || [],
         popular: true,
       },
       {
@@ -59,7 +92,7 @@ export default function ServiceDetail() {
         description: 'Complete solution with priority support',
         deliveryTime: service.deliveryTime === 'Ongoing' ? '3 days' : service.deliveryTime.replace(/\d+/, (match) => String(Math.max(1, parseInt(match) - 4))),
         revisions: -1, // Unlimited
-        features: service.features,
+        features: service.features || [],
       },
     ];
   };
@@ -74,27 +107,45 @@ export default function ServiceDetail() {
     toast.success(`${currentTier.name} package added to cart!`);
   };
 
-  const handleBuyNow = () => {
-    if (!service) return;
-    const modifiedService = { ...service, price: currentTier.price };
-    addToCart(modifiedService, 'one-time', undefined);
-    navigate('/cart');
+  const handleConfirmOrder = async () => {
+    if (!service || !user) return;
+    setIsPlacingOrder(true);
+
+    try {
+      const orderData = {
+        client_id: user.uid,
+        vendor_id: service.vendor_id,
+        service_id: service.id,
+        service_name: service.title,
+        total_amount: currentTier.price
+      };
+
+      await orderService.createOrder(orderData);
+
+      // Clear cart after successful direct order
+      clearCart();
+
+      toast.success("Order placed successfully!");
+      setShowConfirmModal(false);
+      navigate('/orders');
+    } catch (error) {
+      console.error("Order creation failed:", error);
+      toast.error("Failed to place order. Please try again.");
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
   const handleContactVendor = async () => {
-    if (!service) return;
+    if (!service || !user) return;
     try {
-      const conversation = await startConversation(
-        service.vendorId,
-        service.vendorName,
+      const conversationId = await chatService.getOrCreateConversation(
+        user.uid,
+        service.vendor_id,
         service.id,
         service.title
       );
-      if (conversation) {
-        setActiveConversation(conversation);
-        navigate('/messages');
-        toast.success('Conversation started!');
-      }
+      navigate(`/messages/${conversationId}`);
     } catch (error) {
       console.error("Failed to start conversation:", error);
       toast.error("Failed to start conversation. Please try again.");
@@ -103,6 +154,17 @@ export default function ServiceDetail() {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: { pathname: `/services/${id}` } }} />;
+  }
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <Container className="py-5 text-center">
+          <div className="spinner-border text-primary" role="status"></div>
+          <p className="mt-2 text-muted">Loading service details...</p>
+        </Container>
+      </Layout>
+    );
   }
 
   if (!service) {
@@ -118,7 +180,7 @@ export default function ServiceDetail() {
     );
   }
 
-  const vendorReviews = vendor?.reviews || [
+  const vendorReviews = [
     { id: 'r1', clientName: 'Happy Customer', rating: 5, comment: 'Excellent service! Would highly recommend.', serviceName: service.title, date: '2024-01-15' },
     { id: 'r2', clientName: 'Satisfied Client', rating: 4, comment: 'Great work and professional communication.', serviceName: service.title, date: '2024-01-10' },
   ];
@@ -142,7 +204,7 @@ export default function ServiceDetail() {
             </Link>
             <ChevronRight size={14} />
             <Link to={`/category/${service.category}`} className="text-decoration-none text-muted text-capitalize">
-              {service.category.replace('-', ' ')}
+              {service.category?.replace('-', ' ') || 'General'}
             </Link>
             <ChevronRight size={14} />
             <span className="text-dark text-truncate" style={{ maxWidth: '200px' }}>{service.title}</span>
@@ -162,13 +224,13 @@ export default function ServiceDetail() {
             {/* Vendor Info Bar */}
             <Card className="mb-4 border">
               <Card.Body className="p-3 d-flex flex-wrap align-items-center gap-3">
-                <Link to={`/vendors/${vendor?.id || service.vendorId}`} className="d-flex align-items-center gap-3 text-dark text-decoration-none">
+                <Link to={`/vendors/${service.vendor_id}`} className="d-flex align-items-center gap-3 text-dark text-decoration-none">
                   <div className="bg-light rounded-circle d-flex align-items-center justify-content-center" style={{ width: 48, height: 48 }}>
-                    <span className="fw-bold">{service.vendorName.charAt(0)}</span>
+                    <span className="fw-bold">{service.vendor_name?.charAt(0) || 'V'}</span>
                   </div>
                   <div>
                     <div className="d-flex align-items-center gap-2">
-                      <span className="fw-bold">{service.vendorName}</span>
+                      <span className="fw-bold">{service.vendor_name}</span>
                       <BadgeCheck size={16} className="text-primary" />
                     </div>
                     <p className="small text-muted mb-0">
@@ -181,8 +243,8 @@ export default function ServiceDetail() {
 
                 <div className="d-flex align-items-center gap-1">
                   <Star size={20} className="text-warning fill-warning" />
-                  <span className="fw-bold">{service.rating}</span>
-                  <span className="text-muted">({service.reviewCount})</span>
+                  <span className="fw-bold">{service.average_rating || 5.0}</span>
+                  <span className="text-muted">({service.total_reviews || 0})</span>
                 </div>
 
                 <div className="vr d-none d-sm-block mx-2"></div>
@@ -190,7 +252,7 @@ export default function ServiceDetail() {
                 <div className="d-flex align-items-center gap-3 small text-muted">
                   <div className="d-flex align-items-center gap-1">
                     <TrendingUp size={16} />
-                    <span>{vendor?.totalProjects || 100}+ orders</span>
+                    <span>{vendor?.total_projects || 100}+ orders</span>
                   </div>
                 </div>
               </Card.Body>
@@ -203,13 +265,13 @@ export default function ServiceDetail() {
                   <Play size={32} className="text-primary ms-1" />
                 </div>
                 <div className="fs-1">
-                  {service.tags[0] === 'SEO' ? '🔍' :
-                    service.tags[0] === 'Social Media' ? '📱' :
-                      service.tags[0] === 'Content' ? '✍️' :
-                        service.tags[0] === 'PPC' ? '📈' :
-                          service.tags[0] === 'Video' ? '🎬' :
-                            service.tags[0] === 'Branding' ? '🎨' :
-                              service.tags[0] === 'Email' ? '📧' : '📊'}
+                  {service.tags?.[0] === 'SEO' ? '🔍' :
+                    service.tags?.[0] === 'Social Media' ? '📱' :
+                      service.tags?.[0] === 'Content' ? '✍️' :
+                        service.tags?.[0] === 'PPC' ? '📈' :
+                          service.tags?.[0] === 'Video' ? '🎬' :
+                            service.tags?.[0] === 'Branding' ? '🎨' :
+                              service.tags?.[0] === 'Email' ? '📧' : '📊'}
                 </div>
               </div>
             </div>
@@ -218,19 +280,19 @@ export default function ServiceDetail() {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
               <TabsList>
                 <TabsTrigger value="description">Description</TabsTrigger>
-                <TabsTrigger value="reviews">Reviews ({service.reviewCount})</TabsTrigger>
+                <TabsTrigger value="reviews">Reviews ({service.total_reviews || 0})</TabsTrigger>
               </TabsList>
 
               <TabsContent value="description">
                 <div className="mb-5">
                   <h2 className="h4 fw-bold mb-3">About This Service</h2>
                   <p className="text-secondary lh-lg mb-4">
-                    {service.longDescription}
+                    {service.longDescription || service.description}
                   </p>
 
                   <h2 className="h4 fw-bold mb-3">What's Included</h2>
                   <Row xs={1} sm={2} className="g-3 mb-4">
-                    {service.features.map((feature, index) => (
+                    {service.features?.map((feature, index) => (
                       <Col key={index}>
                         <div className="d-flex align-items-start gap-3 p-3 rounded bg-light">
                           <Check size={16} className="text-primary mt-1 flex-shrink-0" />
@@ -242,7 +304,7 @@ export default function ServiceDetail() {
 
                   <h2 className="h4 fw-bold mb-3">Tags</h2>
                   <div className="d-flex flex-wrap gap-2">
-                    {service.tags.map(tag => (
+                    {service.tags?.map(tag => (
                       <Badge key={tag} variant="secondary" className="px-3 py-2 fw-normal fs-6">
                         {tag}
                       </Badge>
@@ -254,17 +316,17 @@ export default function ServiceDetail() {
               <TabsContent value="reviews">
                 <Row className="mb-5 align-items-center">
                   <Col md={6} className="text-center text-md-start mb-4 mb-md-0">
-                    <div className="display-4 fw-bold">{service.rating}</div>
+                    <div className="display-4 fw-bold">{service.average_rating || 5.0}</div>
                     <div className="d-flex justify-content-center justify-content-md-start gap-1 my-2">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
                           key={star}
                           size={20}
-                          className={star <= Math.round(service.rating) ? 'text-warning fill-warning' : 'text-muted'}
+                          className={star <= Math.round(service.average_rating || 5) ? 'text-warning fill-warning' : 'text-muted'}
                         />
                       ))}
                     </div>
-                    <p className="text-muted">{service.reviewCount} reviews</p>
+                    <p className="text-muted">{service.total_reviews || 0} reviews</p>
                   </Col>
                   <Col md={6}>
                     {ratingDistribution.map(({ stars, percentage }) => (
@@ -321,7 +383,7 @@ export default function ServiceDetail() {
 
           {/* Right Side - Pricing */}
           <Col lg={4}>
-            <div className="sticky-top" style={{ top: '100px' }}>
+            <div className="sticky-top" style={{ top: '100px', zIndex: 10 }}>
               <Card className="border shadow-sm overflow-hidden">
                 <div className="d-flex border-bottom bg-light">
                   {tiers.map((tier) => (
@@ -352,7 +414,7 @@ export default function ServiceDetail() {
                   </div>
 
                   <div className="d-flex flex-column gap-2 mb-4">
-                    {service.features.map((feature, index) => {
+                    {service.features?.map((feature, index) => {
                       const isIncluded = index < currentTier.features.length;
                       return (
                         <div key={index} className={`d-flex align-items-center gap-2 small ${!isIncluded ? 'opacity-50 text-decoration-line-through' : ''}`}>
@@ -364,8 +426,8 @@ export default function ServiceDetail() {
                   </div>
 
                   <div className="d-flex flex-column gap-2">
-                    <Button variant="primary" size="lg" className="w-100" onClick={handleBuyNow}>
-                      Continue (${currentTier.price})
+                    <Button variant="primary" size="lg" className="w-100" onClick={() => setShowConfirmModal(true)}>
+                      Place Order (${currentTier.price})
                     </Button>
                     <Button variant="outline" size="lg" className="w-100" onClick={handleAddToCart}>
                       Add to Cart
@@ -381,6 +443,30 @@ export default function ServiceDetail() {
           </Col>
         </Row>
       </Container>
+
+      {/* Confirmation Modal */}
+      <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered className="border-0">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-bold">Confirm Order</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="py-4">
+          <p className="mb-0">Do you want to place an order for <strong>{service.title}</strong> – <strong>${currentTier.price}</strong>?</p>
+        </Modal.Body>
+        <Modal.Footer className="border-0 pt-0 gap-2">
+          <Button variant="outline" onClick={() => setShowConfirmModal(false)} disabled={isPlacingOrder}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleConfirmOrder} disabled={isPlacingOrder}>
+            {isPlacingOrder ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Placing Order...
+              </>
+            ) : 'Confirm'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
       <style>{`
         .fill-warning { fill: #ffc107; }
       `}</style>

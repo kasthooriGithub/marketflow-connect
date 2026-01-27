@@ -19,7 +19,7 @@ export const serviceService = {
 
         const serviceData = {
             ...data,
-            vendorId,
+            vendor_id: vendorId,
             created_at: Timestamp.now(),
             updated_at: Timestamp.now(),
         };
@@ -35,7 +35,7 @@ export const serviceService = {
 
     async getServicesByVendor(vendorId) {
         const servicesRef = collection(db, 'services');
-        const q = query(servicesRef, where('vendorId', '==', vendorId), orderBy('created_at', 'desc'));
+        const q = query(servicesRef, where('vendor_id', '==', vendorId), orderBy('created_at', 'desc'));
         const querySnapshot = await getDocs(q);
 
         return querySnapshot.docs.map(doc => ({
@@ -66,7 +66,7 @@ export const serviceService = {
         await updateDoc(serviceRef, updateData);
     },
     async deleteService(serviceId) {
-  const serviceRef = doc(db, "services", serviceId);
-  await deleteDoc(serviceRef);
-}
+        const serviceRef = doc(db, "services", serviceId);
+        await deleteDoc(serviceRef);
+    }
 };

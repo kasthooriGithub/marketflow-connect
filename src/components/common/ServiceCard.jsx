@@ -1,10 +1,52 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Clock, ArrowRight } from 'lucide-react';
+import { Star, Clock, ArrowRight, Heart } from 'lucide-react';
 import { Button } from 'components/ui/button';
 import { Badge } from 'components/ui/badge';
 import { Card } from 'react-bootstrap';
+import { useAuth } from 'contexts/AuthContext';
+import { isServiceSaved, saveService, unsaveService } from 'services/savedServiceService';
 
 export function ServiceCard({ service, requiresAuth = true }) {
+  const { user, isAuthenticated } = useAuth();
+  const [isSaved, setIsSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const checkSavedStatus = async () => {
+      if (isAuthenticated && user?.uid) {
+        const saved = await isServiceSaved(user.uid, service.id);
+        setIsSaved(saved);
+      }
+    };
+    checkSavedStatus();
+  }, [isAuthenticated, user?.uid, service.id]);
+
+  const handleToggleSave = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isAuthenticated) {
+      // Logic for when user is not authenticated (optional: redirect to login)
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (isSaved) {
+        await unsaveService(user.uid, service.id);
+        setIsSaved(false);
+      } else {
+        await saveService(user.uid, service);
+        setIsSaved(true);
+      }
+    } catch (error) {
+      console.error('Error toggling save status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Card className="h-100 border hover-shadow transition-all" style={{ transition: 'all 0.3s' }}>
       {/* Image Header with Gradient */}
@@ -23,6 +65,23 @@ export function ServiceCard({ service, requiresAuth = true }) {
                   service.tags[0] === 'Video' ? '🎬' :
                     service.tags[0] === 'Branding' ? '🎨' : '📊'}
         </span>
+
+        {/* Heart Toggle Button */}
+        <button
+          onClick={handleToggleSave}
+          disabled={loading}
+          className="position-absolute top-0 end-0 m-3 btn btn-light rounded-circle p-2 shadow-sm d-flex align-items-center justify-content-center border-0"
+          style={{ width: '38px', height: '38px', zIndex: 10, transition: 'transform 0.2s' }}
+          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <Heart
+            size={20}
+            className={isSaved ? "text-danger fill-danger" : "text-muted"}
+            style={{ fill: isSaved ? 'currentColor' : 'none' }}
+          />
+        </button>
+
         {service.popular && (
           <div className="position-absolute top-0 start-0 m-3">
             <Badge variant="secondary">Popular</Badge>
@@ -89,6 +148,7 @@ export function ServiceCard({ service, requiresAuth = true }) {
             overflow: hidden;
         }
         .fill-warning { fill: #ffc107; }
+        .fill-danger { fill: #dc3545; }
         .hover-shadow:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); transform: translateY(-2px); }
       `}</style>
     </Card>
