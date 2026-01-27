@@ -1,19 +1,44 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Row, Col } from 'react-bootstrap';
-import { Megaphone, Share2, Palette, Video, Code, TrendingUp, Mail, FileText } from 'lucide-react';
-
-const categories = [
-    { id: 'seo', name: 'SEO', icon: TrendingUp, color: '#00B67A', bgColor: '#E6F7F1' },
-    { id: 'social-media', name: 'Social Media', icon: Share2, color: '#FF6B6B', bgColor: '#FFE5E5' },
-    { id: 'branding', name: 'Logo & Branding', icon: Palette, color: '#4ECDC4', bgColor: '#E0F7F5' },
-    { id: 'video', name: 'Video Editing', icon: Video, color: '#FFD93D', bgColor: '#FFF8E1' },
-    { id: 'web', name: 'Web Development', icon: Code, color: '#6C5CE7', bgColor: '#EDE7F6' },
-    { id: 'content', name: 'Content Writing', icon: FileText, color: '#A8E6CF', bgColor: '#F1F8F4' },
-    { id: 'email', name: 'Email Marketing', icon: Mail, color: '#FF8B94', bgColor: '#FFE9EB' },
-    { id: 'advertising', name: 'Advertising', icon: Megaphone, color: '#95E1D3', bgColor: '#E8F6F3' },
-];
+import { db } from 'lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 
 export default function CategoryGrid() {
+    const [categories, setCategories] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            setIsLoading(true);
+            try {
+                const categoriesRef = collection(db, 'categories');
+                const querySnapshot = await getDocs(categoriesRef);
+                const categoriesData = querySnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setCategories(categoriesData);
+            } catch (error) {
+                console.error("Error fetching categories:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchCategories();
+    }, []);
+
+    if (isLoading) {
+        return (
+            <section className="section-padding bg-white">
+                <Container className="text-center py-5">
+                    <div className="spinner-border text-primary" role="status"></div>
+                </Container>
+            </section>
+        );
+    }
+
     return (
         <section id="categories" className="section-padding" style={{ background: '#FAFAFA' }}>
             <Container>
@@ -53,11 +78,11 @@ export default function CategoryGrid() {
                                         style={{
                                             width: 72,
                                             height: 72,
-                                            backgroundColor: category.bgColor,
+                                            backgroundColor: category.bgColor || '#F8F9FA',
                                             transition: 'transform 0.3s ease'
                                         }}
                                     >
-                                        <category.icon size={36} style={{ color: category.color }} />
+                                        <span style={{ fontSize: '2rem' }}>{category.icon}</span>
                                     </div>
                                     <h5 className="fw-bold mb-0" style={{ fontSize: '1.05rem', color: '#404145' }}>
                                         {category.name}
@@ -71,3 +96,4 @@ export default function CategoryGrid() {
         </section>
     );
 }
+

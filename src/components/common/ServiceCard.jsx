@@ -27,7 +27,6 @@ export function ServiceCard({ service, requiresAuth = true }) {
     e.stopPropagation();
 
     if (!isAuthenticated) {
-      // Logic for when user is not authenticated (optional: redirect to login)
       return;
     }
 
@@ -47,6 +46,24 @@ export function ServiceCard({ service, requiresAuth = true }) {
     }
   };
 
+  const getServiceIcon = () => {
+    if (service.category_icon) return service.category_icon;
+
+    // Fallback based on tags
+    const tag = service.tags?.[0];
+    switch (tag) {
+      case 'SEO': return '🔍';
+      case 'Social Media': return '📱';
+      case 'Content': return '✍️';
+      case 'PPC': return '📈';
+      case 'Video': return '🎬';
+      case 'Branding': return '🎨';
+      case 'Email': return '📧';
+      case 'Analytics': return '📊';
+      default: return '💼';
+    }
+  };
+
   return (
     <Card className="h-100 border hover-shadow transition-all" style={{ transition: 'all 0.3s' }}>
       {/* Image Header with Gradient */}
@@ -58,12 +75,7 @@ export function ServiceCard({ service, requiresAuth = true }) {
         }}
       >
         <span className="display-4">
-          {service.tags[0] === 'SEO' ? '🔍' :
-            service.tags[0] === 'Social Media' ? '📱' :
-              service.tags[0] === 'Content' ? '✍️' :
-                service.tags[0] === 'PPC' ? '📈' :
-                  service.tags[0] === 'Video' ? '🎬' :
-                    service.tags[0] === 'Branding' ? '🎨' : '📊'}
+          {getServiceIcon()}
         </span>
 
         {/* Heart Toggle Button */}
@@ -92,7 +104,7 @@ export function ServiceCard({ service, requiresAuth = true }) {
       <Card.Body className="d-flex flex-column p-4">
         {/* Tags */}
         <div className="d-flex align-items-center gap-2 mb-2">
-          {service.tags.slice(0, 2).map(tag => (
+          {service.tags?.slice(0, 2).map(tag => (
             <Badge key={tag} variant="secondary" className="fw-normal">
               {tag}
             </Badge>
@@ -111,11 +123,11 @@ export function ServiceCard({ service, requiresAuth = true }) {
 
         {/* Vendor & Rating */}
         <div className="d-flex align-items-center justify-content-between mb-3 mt-auto">
-          <span className="small text-muted">{service.vendorName}</span>
+          <span className="small text-muted">{service.vendor_name || service.vendorName || 'Professional'}</span>
           <div className="d-flex align-items-center gap-1">
             <Star size={14} className="text-warning fill-warning" />
-            <span className="small fw-medium">{service.rating}</span>
-            <span className="small text-muted">({service.reviewCount})</span>
+            <span className="small fw-medium">{service.average_rating || service.rating || 5.0}</span>
+            <span className="small text-muted">({service.total_reviews || service.reviewCount || 0})</span>
           </div>
         </div>
 
@@ -123,11 +135,11 @@ export function ServiceCard({ service, requiresAuth = true }) {
         <div className="d-flex align-items-center justify-content-between pt-3 border-top">
           <div>
             <span className="h5 fw-bold mb-0 text-dark">${service.price}</span>
-            <span className="small text-muted ms-1">
-              /{service.priceType === 'monthly' ? 'mo' : service.priceType === 'hourly' ? 'hr' : 'project'}
+            <span className="small text-muted ms-1 text-capitalize">
+              /{service.priceType || 'project'}
             </span>
           </div>
-          <Link to={requiresAuth ? `/services/${service.id}` : `/services/${service.id}`}>
+          <Link to={`/services/${service.id}`}>
             <Button size="sm" variant="gradient" className="d-flex align-items-center gap-1">
               View <ArrowRight size={14} />
             </Button>
@@ -137,7 +149,7 @@ export function ServiceCard({ service, requiresAuth = true }) {
         {/* Delivery Time */}
         <div className="d-flex align-items-center gap-1 mt-3 small text-muted">
           <Clock size={12} />
-          <span>{service.deliveryTime}</span>
+          <span>{service.deliveryTime || 'Varies'}</span>
         </div>
       </Card.Body>
       <style>{`
@@ -154,3 +166,4 @@ export function ServiceCard({ service, requiresAuth = true }) {
     </Card>
   );
 }
+
