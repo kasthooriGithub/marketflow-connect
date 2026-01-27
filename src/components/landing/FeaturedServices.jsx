@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Star, Heart } from 'lucide-react';
 import { Container, Row, Col } from 'react-bootstrap';
 import { db } from 'lib/firebase';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, query, getDocs, limit } from 'firebase/firestore';
 
 export default function FeaturedServices() {
     const [featuredServices, setFeaturedServices] = useState([]);
@@ -14,7 +14,6 @@ export default function FeaturedServices() {
             setIsLoading(true);
             try {
                 const servicesRef = collection(db, 'services');
-                // You can filter by 'popular' or just take the first 4 for now
                 const q = query(servicesRef, limit(4));
                 const querySnapshot = await getDocs(q);
                 const servicesData = querySnapshot.docs.map(doc => ({
@@ -31,6 +30,23 @@ export default function FeaturedServices() {
 
         fetchFeatured();
     }, []);
+
+    const getServiceIcon = (service) => {
+        if (service.category_icon) return service.category_icon;
+
+        const tag = service.tags?.[0];
+        switch (tag) {
+            case 'SEO': return '🔍';
+            case 'Social Media': return '📱';
+            case 'Content': return '✍️';
+            case 'PPC': return '📈';
+            case 'Video': return '🎬';
+            case 'Branding': return '🎨';
+            case 'Email': return '📧';
+            case 'Analytics': return '📊';
+            default: return '💼';
+        }
+    };
 
     if (isLoading) {
         return (
@@ -62,12 +78,7 @@ export default function FeaturedServices() {
                                 <div className="gig-card card border-0 h-100">
                                     <div className="position-relative d-flex align-items-center justify-content-center bg-light overflow-hidden" style={{ height: '200px' }}>
                                         <span className="display-4">
-                                            {service.tags?.[0] === 'SEO' ? '🔍' :
-                                                service.tags?.[0] === 'Social Media' ? '📱' :
-                                                    service.tags?.[0] === 'Content' ? '✍️' :
-                                                        service.tags?.[0] === 'PPC' ? '📈' :
-                                                            service.tags?.[0] === 'Video' ? '🎬' :
-                                                                service.tags?.[0] === 'Branding' ? '🎨' : '📊'}
+                                            {getServiceIcon(service)}
                                         </span>
                                         <button
                                             className="btn btn-sm position-absolute top-0 end-0 m-2 bg-white rounded-circle p-2"
@@ -83,10 +94,10 @@ export default function FeaturedServices() {
                                                 className="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white fw-bold"
                                                 style={{ width: 32, height: 32, fontSize: '0.75rem' }}
                                             >
-                                                {service.vendor_name?.charAt(0) || 'V'}
+                                                {(service.vendor_name || 'V').charAt(0)}
                                             </div>
                                             <div>
-                                                <div className="fw-semibold small" style={{ color: '#404145' }}>{service.vendor_name}</div>
+                                                <div className="fw-semibold small" style={{ color: '#404145' }}>{service.vendor_name || 'Verified Seller'}</div>
                                                 <div className="trust-badge" style={{ fontSize: '0.65rem' }}>
                                                     Verified Seller
                                                 </div>
@@ -132,3 +143,4 @@ export default function FeaturedServices() {
         </section>
     );
 }
+
