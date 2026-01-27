@@ -8,6 +8,8 @@ import { useAuth } from 'contexts/AuthContext';
 import { useToast } from 'hooks/use-toast';
 import { Form } from 'react-bootstrap';
 
+
+
 export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,8 +49,8 @@ export default function Signup() {
       {/* Left side - Decorative (Hidden on mobile) */}
       <div className="d-none d-lg-flex flex-grow-1 bg-primary align-items-center justify-content-center p-5 text-white text-center h-100">
         <div style={{ maxWidth: '400px' }}>
-          <h2 className="display-6 fw-bold mb-3">Join MarketFlow Today</h2>
-          <p className="opacity-75">
+          <h2 className="text-white display-6 fw-bold mb-3">Join MarketFlow Today</h2>
+          <p className="text-white opacity-75">
             Whether you're a business looking for marketing help or an agency ready to grow, we've got you covered.
           </p>
         </div>

@@ -8,6 +8,8 @@ import { useAuth } from 'contexts/AuthContext';
 import { useToast } from 'hooks/use-toast';
 import { Form } from 'react-bootstrap';
 
+
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,8 +42,9 @@ export default function Login() {
     // ✅ Full screen lock + no body scroll
     <div className="d-flex vh-100 overflow-hidden">
       {/* Left side - Form (scroll inside only if needed) */}
-      <div className="flex-grow-1 h-100 overflow-auto p-4" style={{ minHeight: 0 }}>
-        <div className="w-100" style={{ maxWidth: '400px', margin: '0 auto' }}>
+      <div className="flex-grow-1 h-100 overflow-auto p-4 d-flex align-items-center justify-content-center" style={{ minHeight: 0 }}>
+  <div className="w-100" style={{ maxWidth: '400px' }}>
+
           <Link to="/" className="d-flex align-items-center gap-2 mb-4 text-decoration-none">
             <div
               className="bg-primary text-white rounded d-flex align-items-center justify-content-center fw-bold"
@@ -116,8 +119,8 @@ export default function Login() {
       {/* Right side - Decorative (Hidden on mobile) */}
       <div className="d-none d-lg-flex flex-grow-1 bg-primary align-items-center justify-content-center p-5 text-white text-center h-100">
         <div style={{ maxWidth: '420px' }}>
-          <h2 className="display-6 fw-bold mb-3">Welcome to MarketFlow</h2>
-          <p className="opacity-75">
+          <h2 className="display-6 fw-bold text-white mb-3">Welcome to MarketFlow</h2>
+          <p className="text-white opacity-75">
             Find the right marketing services and manage your projects easily with one platform.
           </p>
         </div>
