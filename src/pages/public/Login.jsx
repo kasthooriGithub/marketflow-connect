@@ -24,7 +24,6 @@ export default function Login() {
     const result = await login(email, password);
 
     if (result.success) {
-      toast({ title: 'Welcome back!', description: 'Login successful.' });
       navigate('/dashboard', { replace: true });
     } else {
       toast({

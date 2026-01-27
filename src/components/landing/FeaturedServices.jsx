@@ -1,51 +1,47 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Heart } from 'lucide-react';
 import { Container, Row, Col } from 'react-bootstrap';
-
-const featuredServices = [
-    {
-        id: 1,
-        title: 'I will create professional SEO content for your website',
-        seller: 'Sarah M.',
-        sellerLevel: 'Top Rated',
-        rating: 4.9,
-        reviews: 234,
-        price: 150,
-        image: 'https://via.placeholder.com/300x200/00B67A/FFFFFF?text=SEO+Content'
-    },
-    {
-        id: 2,
-        title: 'I will design a modern logo and brand identity',
-        seller: 'Alex K.',
-        sellerLevel: 'Level 2',
-        rating: 5.0,
-        reviews: 189,
-        price: 200,
-        image: 'https://via.placeholder.com/300x200/4ECDC4/FFFFFF?text=Logo+Design'
-    },
-    {
-        id: 3,
-        title: 'I will manage your social media accounts professionally',
-        seller: 'Mike R.',
-        sellerLevel: 'Top Rated',
-        rating: 4.8,
-        reviews: 312,
-        price: 300,
-        image: 'https://via.placeholder.com/300x200/FF6B6B/FFFFFF?text=Social+Media'
-    },
-    {
-        id: 4,
-        title: 'I will create engaging video content for your brand',
-        seller: 'Emma L.',
-        sellerLevel: 'Level 2',
-        rating: 4.9,
-        reviews: 156,
-        price: 250,
-        image: 'https://via.placeholder.com/300x200/FFD93D/FFFFFF?text=Video+Content'
-    },
-];
+import { db } from 'lib/firebase';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 export default function FeaturedServices() {
+    const [featuredServices, setFeaturedServices] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchFeatured = async () => {
+            setIsLoading(true);
+            try {
+                const servicesRef = collection(db, 'services');
+                // You can filter by 'popular' or just take the first 4 for now
+                const q = query(servicesRef, limit(4));
+                const querySnapshot = await getDocs(q);
+                const servicesData = querySnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setFeaturedServices(servicesData);
+            } catch (error) {
+                console.error("Error fetching featured services:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchFeatured();
+    }, []);
+
+    if (isLoading) {
+        return (
+            <section id="features" className="section-padding" style={{ background: '#F7F7F7' }}>
+                <Container className="text-center py-5">
+                    <div className="spinner-border text-primary" role="status"></div>
+                </Container>
+            </section>
+        );
+    }
+
     return (
         <section id="features" className="section-padding" style={{ background: '#F7F7F7' }}>
             <Container>
@@ -64,15 +60,19 @@ export default function FeaturedServices() {
                         <Col md={6} lg={3} key={service.id}>
                             <Link to={`/services/${service.id}`} className="text-decoration-none">
                                 <div className="gig-card card border-0 h-100">
-                                    <div className="position-relative">
-                                        <img
-                                            src={service.image}
-                                            alt={service.title}
-                                            className="gig-card-image"
-                                        />
+                                    <div className="position-relative d-flex align-items-center justify-content-center bg-light overflow-hidden" style={{ height: '200px' }}>
+                                        <span className="display-4">
+                                            {service.tags?.[0] === 'SEO' ? '🔍' :
+                                                service.tags?.[0] === 'Social Media' ? '📱' :
+                                                    service.tags?.[0] === 'Content' ? '✍️' :
+                                                        service.tags?.[0] === 'PPC' ? '📈' :
+                                                            service.tags?.[0] === 'Video' ? '🎬' :
+                                                                service.tags?.[0] === 'Branding' ? '🎨' : '📊'}
+                                        </span>
                                         <button
                                             className="btn btn-sm position-absolute top-0 end-0 m-2 bg-white rounded-circle p-2"
                                             style={{ width: 36, height: 36 }}
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                         >
                                             <Heart size={16} />
                                         </button>
@@ -83,12 +83,12 @@ export default function FeaturedServices() {
                                                 className="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white fw-bold"
                                                 style={{ width: 32, height: 32, fontSize: '0.75rem' }}
                                             >
-                                                {service.seller.charAt(0)}
+                                                {service.vendor_name?.charAt(0) || 'V'}
                                             </div>
                                             <div>
-                                                <div className="fw-semibold small" style={{ color: '#404145' }}>{service.seller}</div>
+                                                <div className="fw-semibold small" style={{ color: '#404145' }}>{service.vendor_name}</div>
                                                 <div className="trust-badge" style={{ fontSize: '0.65rem' }}>
-                                                    {service.sellerLevel}
+                                                    Verified Seller
                                                 </div>
                                             </div>
                                         </div>
@@ -108,9 +108,9 @@ export default function FeaturedServices() {
                                             <div className="d-flex align-items-center gap-1">
                                                 <Star size={14} className="rating-star" fill="#FFB33E" />
                                                 <span className="fw-bold small" style={{ color: '#404145' }}>
-                                                    {service.rating}
+                                                    {service.average_rating || 5.0}
                                                 </span>
-                                                <span className="text-muted small">({service.reviews})</span>
+                                                <span className="text-muted small">({service.total_reviews || 0})</span>
                                             </div>
                                             <div className="fw-bold" style={{ color: '#404145' }}>
                                                 From ${service.price}

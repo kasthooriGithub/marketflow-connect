@@ -7,38 +7,49 @@ import {
     where,
     doc,
     updateDoc,
-    Timestamp,
+    serverTimestamp,
     orderBy,
     onSnapshot
 } from 'firebase/firestore';
 
 export const chatService = {
     // Create or get existing conversation
-    async startConversation(participants, serviceId) {
+    async getOrCreateConversation(clientId, vendorId, serviceId, serviceName) {
         const conversationsRef = collection(db, 'conversations');
 
-        const q = query(conversationsRef, where('participants', 'array-contains', participants[0]));
+        const q = query(
+            conversationsRef,
+            where('client_id', '==', clientId),
+            where('vendor_id', '==', vendorId),
+            where('service_id', '==', serviceId)
+        );
+
         const snapshot = await getDocs(q);
 
-        const existing = snapshot.docs.find(doc => {
-            const data = doc.data();
-            return data.participants.includes(participants[1]) && data.participants.length === 2;
-        });
-
-        if (existing) {
-            return existing.id;
+        if (!snapshot.empty) {
+            return snapshot.docs[0].id;
         }
 
         // Create new
         const newConvData = {
-            participants,
-            serviceId,
-            created_at: Timestamp.now(),
-            updated_at: Timestamp.now()
+            client_id: clientId,
+            vendor_id: vendorId,
+            service_id: serviceId,
+            service_name: serviceName,
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp(),
+            lastMessage: null,
+            last_message_at: null
         };
 
         const docRef = await addDoc(conversationsRef, newConvData);
         return docRef.id;
+    },
+
+    // Legacy support for startConversation if still used elsewhere (optional but safer)
+    async startConversation(participants, serviceId) {
+        // Fallback or internal use
+        return this.getOrCreateConversation(participants[0], participants[1], serviceId, 'Service Inquiry');
     },
 
     async sendMessage(conversationId, senderId, content) {
@@ -48,7 +59,7 @@ export const chatService = {
         const messageData = {
             senderId,
             content,
-            timestamp: Timestamp.now(),
+            timestamp: serverTimestamp(),
             read: false
         };
 
@@ -56,12 +67,14 @@ export const chatService = {
 
         // Update last message in conversation
         await updateDoc(conversationRef, {
-            lastMessage: {
+            last_message: content,
+            last_message_at: serverTimestamp(),
+            lastMessage: { // Keep for UI compatibility
                 content,
                 senderId,
-                timestamp: Timestamp.now()
+                timestamp: serverTimestamp()
             },
-            updated_at: Timestamp.now()
+            updated_at: serverTimestamp()
         });
     },
 
@@ -81,12 +94,18 @@ export const chatService = {
 
     async getUserConversations(userId) {
         const conversationsRef = collection(db, 'conversations');
-        const q = query(conversationsRef, where('participants', 'array-contains', userId), orderBy('updated_at', 'desc'));
+        // Search as either client or vendor
+        const qClient = query(conversationsRef, where('client_id', '==', userId), orderBy('updated_at', 'desc'));
+        const qVendor = query(conversationsRef, where('vendor_id', '==', userId), orderBy('updated_at', 'desc'));
 
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({
+        const [clientSnap, vendorSnap] = await Promise.all([getDocs(qClient), getDocs(qVendor)]);
+
+        const allConvs = [...clientSnap.docs, ...vendorSnap.docs].map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
+
+        // Deduplicate and sort if needed (though usually client and vendor IDs are distinct)
+        return allConvs.sort((a, b) => (b.updated_at?.toMillis() || 0) - (a.updated_at?.toMillis() || 0));
     }
 };

@@ -7,7 +7,7 @@ import { Input } from 'components/ui/input';
 import { Label } from 'components/ui/label';
 import { CreditCard, Building2, Wallet, Check, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { createOrder } from 'data/orders';
+import { orderService } from 'services/orderService';
 import { toast } from 'sonner';
 import { Container, Card, Form, Row, Col } from 'react-bootstrap';
 
@@ -38,20 +38,34 @@ export default function Checkout() {
     // Simulate payment processing
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Create order
-    const order = createOrder(
-      user.id,
-      items,
-      getTotal(),
-      paymentMethod
-    );
+    // Create orders for all items in cart
+    try {
+      const orderPromises = items.map(item => {
+        const orderData = {
+          client_id: user.uid,
+          vendor_id: item.service.vendor_id || item.service.vendorId, // support both cases
+          service_id: item.service.id,
+          service_name: item.service.title,
+          total_amount: item.paymentType === 'subscription' && item.subscriptionPeriod === 'yearly'
+            ? item.service.price * 12 * 0.8
+            : item.service.price
+        };
+        return orderService.createOrder(orderData);
+      });
 
-    // Clear cart and redirect
-    clearCart();
-    setIsProcessing(false);
+      await Promise.all(orderPromises);
 
-    toast.success('Payment successful!');
-    navigate(`/order-confirmation/${order.id}`);
+      // Clear cart and redirect
+      clearCart();
+      setIsProcessing(false);
+
+      toast.success('Payment successful! Your orders have been placed.');
+      navigate('/orders');
+    } catch (error) {
+      console.error("Checkout failed:", error);
+      toast.error("Checkout failed. Please try again.");
+      setIsProcessing(false);
+    }
   };
 
   if (items.length === 0) {
