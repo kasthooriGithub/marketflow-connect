@@ -10,6 +10,47 @@ body {
   padding-top: 0 !important;
 }
 
+/* Layout Utilities (Fix for missing Tailwind classes) */
+.fixed {
+  position: fixed;
+}
+
+.top-0 {
+  top: 0;
+}
+
+.z-\[100\] {
+  z-index: 100;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.max-h-screen {
+  max-height: 100vh;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col-reverse {
+  flex-direction: column-reverse;
+}
+
+.p-4 {
+  padding: 1rem;
+}
+
+.pointer-events-none {
+  pointer-events: none;
+}
+
+.pointer-events-auto {
+  pointer-events: auto;
+}
+
 .sticky-top {
   top: 0 !important;
 }
