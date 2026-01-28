@@ -38,6 +38,7 @@ import Orders from "./pages/client/Orders";
 import MyServices from "./pages/vendor/VendorServices";
 import Settings from "./pages/client/Settings";
 import Earnings from "./pages/vendor/Earnings";
+import VendorServiceDetails from "./pages/vendor/VenderServiceDetails";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -187,6 +188,11 @@ const App = () => (
                     </AdminRoute>
                   } />
 
+                  <Route path="/vendor/services/:serviceId" element={
+                    <ProtectedRoute allowedRoles={['vendor']}>
+                      <VendorServiceDetails />
+                    </ProtectedRoute>
+                  } />
                   {/* Catch-all */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
