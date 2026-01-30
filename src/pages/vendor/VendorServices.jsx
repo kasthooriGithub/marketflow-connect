@@ -5,12 +5,9 @@ import { Button } from 'components/ui/button';
 import { useAuth } from 'contexts/AuthContext';
 import { AddServiceModal } from 'components/vendor/AddServiceModal';
 import { db } from 'lib/firebase';
-import { collection, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
-import { toast } from 'sonner';
-import {
-  ArrowLeft, Plus, Edit, Trash2, Eye, Star, Package, MoreVertical, Settings2
-} from 'lucide-react';
-import { Container, Row, Col, Card, Badge, Dropdown, Modal } from 'react-bootstrap';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { ArrowLeft, Plus, Eye, Star, Package } from 'lucide-react';
+import { Container, Row, Col, Card, Badge } from 'react-bootstrap';
 
 export default function MyServices() {
   const { user } = useAuth();
@@ -18,32 +15,19 @@ export default function MyServices() {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [editingService, setEditingService] = useState(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [serviceToDelete, setServiceToDelete] = useState(null);
 
   useEffect(() => {
     if (!user?.uid) return;
+    
+    // Real-time listener for services belonging to this vendor
     const q = query(collection(db, 'services'), where('vendor_id', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     });
+    
     return () => unsubscribe();
   }, [user]);
-
-  const handleEdit = (service) => {
-    setEditingService(service);
-    setIsAddModalOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    try {
-      await deleteDoc(doc(db, 'services', serviceToDelete));
-      toast.success('Service removed successfully');
-    } catch (e) { toast.error('Error deleting service'); }
-    setDeleteDialogOpen(false);
-  };
 
   if (loading) return (
     <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
@@ -55,7 +39,7 @@ export default function MyServices() {
     <Layout>
       <div className="bg-light min-vh-100 py-5">
         <Container>
-          {/* Professional Header */}
+          {/* Header Section */}
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-5 gap-3">
             <div>
               <Link to="/dashboard" className="text-decoration-none text-primary fw-bold small d-flex align-items-center mb-2">
@@ -77,7 +61,7 @@ export default function MyServices() {
               {services.map((service) => (
                 <Col md={6} lg={4} key={service.id}>
                   <Card className="h-100 border-0 shadow-sm hover-card rounded-4 overflow-hidden bg-white">
-                    {/* Visual Card Top */}
+                    {/* Top Decorative Banner */}
                     <div className="service-banner d-flex align-items-center justify-content-center">
                        <div className="banner-overlay"></div>
                        <Package size={40} className="text-white position-relative z-1" />
@@ -103,33 +87,15 @@ export default function MyServices() {
                         <span className="text-muted small text-uppercase">/ {service.priceType}</span>
                       </div>
 
-                      {/* Action Buttons */}
+                      {/* Details Button - Navigates to VendorServiceDetails */}
                       <div className="d-flex gap-2">
                         <Button 
                           variant="outline-dark" 
-                          className="flex-grow-1 rounded-3 d-flex align-items-center justify-content-center"
-                          onClick={() => navigate(`/services/${service.id}`)}
+                          className="w-100 rounded-3 d-flex align-items-center justify-content-center py-2"
+                          onClick={() => navigate(`/vendor/services/${service.id}`)}
                         >
-                          <Eye size={16} className="me-2" /> Details
+                          <Eye size={18} className="me-2" /> View Details
                         </Button>
-                        
-                        <Dropdown>
-                          <Dropdown.Toggle variant="light" className="rounded-3 border">
-                            <Settings2 size={16} />
-                          </Dropdown.Toggle>
-                          <Dropdown.Menu align="end" className="border-0 shadow-lg">
-                            <Dropdown.Item onClick={() => handleEdit(service)} className="py-2 px-3">
-                              <Edit size={14} className="me-2 text-info" /> Edit Service
-                            </Dropdown.Item>
-                            <Dropdown.Divider />
-                            <Dropdown.Item 
-                              className="text-danger py-2 px-3" 
-                              onClick={() => {setServiceToDelete(service.id); setDeleteDialogOpen(true)}}
-                            >
-                              <Trash2 size={14} className="me-2" /> Remove
-                            </Dropdown.Item>
-                          </Dropdown.Menu>
-                        </Dropdown>
                       </div>
                     </Card.Body>
                   </Card>
@@ -137,7 +103,8 @@ export default function MyServices() {
               ))}
             </Row>
           ) : (
-            <div className="text-center py-5 bg-white rounded-4 shadow-sm">
+            /* Empty State */
+            <div className="text-center py-5 bg-white rounded-4 shadow-sm border">
               <Package size={60} className="text-muted opacity-25 mb-3" />
               <h3>No services found</h3>
               <p className="text-muted mb-4">Let's create your first professional listing!</p>
@@ -145,25 +112,11 @@ export default function MyServices() {
             </div>
           )}
 
-          {/* Add/Edit Modal */}
+          {/* Add Service Modal */}
           <AddServiceModal
             open={isAddModalOpen}
-            onOpenChange={(val) => { setIsAddModalOpen(val); if(!val) setEditingService(null); }}
-            editService={editingService}
+            onOpenChange={(val) => setIsAddModalOpen(val)}
           />
-
-          {/* Confirm Delete */}
-          <Modal show={deleteDialogOpen} onHide={() => setDeleteDialogOpen(false)} centered>
-            <Modal.Body className="p-4 text-center">
-              <div className="text-danger mb-3"><Trash2 size={40} /></div>
-              <h4 className="fw-bold">Delete Service?</h4>
-              <p className="text-muted">This action is permanent and cannot be undone.</p>
-              <div className="d-flex gap-3 justify-content-center mt-4">
-                <Button variant="light" onClick={() => setDeleteDialogOpen(false)} className="px-4">Cancel</Button>
-                <Button variant="danger" onClick={handleConfirmDelete} className="px-4 shadow-sm">Delete</Button>
-              </div>
-            </Modal.Body>
-          </Modal>
 
         </Container>
       </div>
@@ -189,7 +142,11 @@ export default function MyServices() {
           transform: translateY(-8px); 
           box-shadow: 0 15px 30px rgba(198, 160, 160, 0.1) !important;
         }
-        .text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .text-truncate { 
+          overflow: hidden; 
+          text-overflow: ellipsis; 
+          white-space: nowrap; 
+        }
       `}</style>
     </Layout>
   );
