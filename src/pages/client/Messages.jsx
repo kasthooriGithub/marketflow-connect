@@ -1,219 +1,245 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
-import { Layout } from 'components/layout/Layout';
-import { useMessaging } from 'contexts/MessagingContext';
-import { useAuth } from 'contexts/AuthContext';
-import { Button } from 'components/ui/button';
-import { Input } from 'components/ui/input';
-import { Send, MessageSquare, ArrowLeft } from 'lucide-react';
-import { Container, Row, Col } from 'react-bootstrap';
+import { useEffect, useRef, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useMessaging } from "contexts/MessagingContext";
+import { useAuth } from "contexts/AuthContext";
+import { Layout } from "components/layout/Layout";
 
 export default function Messages() {
   const { user } = useAuth();
   const { conversationId } = useParams();
+  const navigate = useNavigate();
+
   const {
-    conversations,
-    activeConversation,
-    setActiveConversation,
-    sendMessage,
-    messages,
-  } = useMessaging();
+  conversations,
+  activeConversation,
+  setActiveConversation,
+  messages,
+  sendMessage,
+  unreadByConversation, // ✅ NEW
+} = useMessaging();
 
-  const [newMessage, setNewMessage] = useState('');
-  const messagesEndRef = useRef(null);
 
-  // Set active conversation from URL param
+  const [text, setText] = useState("");
+  const bottomRef = useRef(null);
+
+  // ✅ select active conversation from URL
   useEffect(() => {
-    if (conversationId && conversations.length > 0) {
-      const found = conversations.find(c => c.id === conversationId);
-      if (found && activeConversation?.id !== found.id) {
-        setActiveConversation(found);
-      }
+    if (!conversationId) {
+      setActiveConversation(null);
+      return;
     }
-  }, [conversationId, conversations, setActiveConversation, activeConversation]);
+    if (conversations.length === 0) return;
+
+    const found = conversations.find(
+      (c) => String(c.id) === String(conversationId)
+    );
+    setActiveConversation(found || null);
+  }, [conversationId, conversations, setActiveConversation]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = (e) => {
+  const getOtherName = (conv) => {
+    if (!conv) return "";
+    return user?.role === "vendor"
+      ? conv.client_name || "Client"
+      : conv.vendor_name || "Vendor";
+  };
+
+  // ✅ IMPORTANT: when opened via /messages/:id -> show only that one conversation in left
+  const visibleConversations = conversationId
+    ? conversations.filter((c) => String(c.id) === String(conversationId))
+    : conversations;
+
+  const handleSend = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !activeConversation) return;
-    sendMessage(activeConversation.id, newMessage.trim());
-    setNewMessage('');
-  };
-
-  const getOtherParticipant = (conv) => {
-    if (!user) return { name: '', id: '' };
-    if (user.role === 'vendor') {
-      return { name: conv.participants.clientName, id: conv.participants.clientId };
-    }
-    return { name: conv.participants.vendorName, id: conv.participants.vendorId };
-  };
-
-  const formatTime = (timestamp) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return date.toLocaleDateString([], { weekday: 'short' });
-    }
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    const msg = text.trim();
+    if (!msg) return;
+    await sendMessage(msg);
+    setText("");
   };
 
   return (
     <Layout>
-      <Container className="py-5">
-        <h1 className="h3 fw-bold mb-4">Messages</h1>
+      <div className="messages-page">
+        {/* Sidebar */}
+        <div className="sidebar">
+          <div className="d-flex align-items-center justify-content-between mb-2">
+            <h4 className="m-0">Conversations</h4>
 
-        <Row className="g-0 border rounded-4 overflow-hidden bg-white shadow-sm" style={{ height: 'calc(100vh - 280px)', minHeight: '500px' }}>
-          {/* Conversations List */}
-          <Col md={4} className={`border-end flex-column ${activeConversation && 'd-none d-md-flex'}`} style={{ display: 'flex' }}>
-            <div className="p-3 border-bottom bg-light bg-opacity-50">
-              <h2 className="h6 fw-bold mb-0">Conversations</h2>
-            </div>
-            <div className="flex-grow-1 overflow-auto">
-              {conversations.length === 0 ? (
-                <div className="p-4 text-center text-muted small">
-                  No conversations found.
-                </div>
-              ) : (
-                <div className="list-group list-group-flush">
-                  {conversations.map(conv => {
-                    const other = getOtherParticipant(conv);
-                    const isActive = activeConversation?.id === conv.id;
-
-                    return (
-                      <button
-                        key={conv.id}
-                        onClick={() => setActiveConversation(conv)}
-                        className={`list-group-item list-group-item-action border-0 border-bottom p-3 ${isActive ? 'bg-primary bg-opacity-10' : ''}`}
-                      >
-                        <div className="d-flex gap-3">
-                          <div className="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 40, height: 40 }}>
-                            <span className="text-primary fw-bold">{other.name.charAt(0)}</span>
-                          </div>
-                          <div className="flex-grow-1 min-w-0">
-                            <div className="d-flex justify-content-between align-items-center mb-1">
-                              <div className="fw-semibold text-dark truncate small">{other.name}</div>
-                              {conv.lastMessage && (
-                                <span className="text-muted" style={{ fontSize: '0.7rem' }}>
-                                  {formatTime(conv.lastMessage.timestamp)}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-primary small truncate fw-medium" style={{ fontSize: '0.75rem' }}>
-                              {conv.serviceName}
-                            </div>
-                            {conv.lastMessage && (
-                              <div className="text-muted small truncate mt-1" style={{ fontSize: '0.75rem' }}>
-                                {conv.lastMessage.senderId === user?.id ? 'You: ' : ''}
-                                {conv.lastMessage.content}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </Col>
-
-          {/* Chat Area */}
-          <Col md={8} className={`flex-column ${!activeConversation && 'd-none d-md-flex'}`} style={{ display: 'flex' }}>
-            {activeConversation ? (
-              <>
-                {/* Chat Header */}
-                <div className="p-3 border-bottom d-flex align-items-center gap-3 bg-light bg-opacity-25">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveConversation(null)}
-                    className="d-md-none p-1"
-                  >
-                    <ArrowLeft size={20} />
-                  </Button>
-                  <div className="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 40, height: 40 }}>
-                    <span className="text-primary fw-bold">
-                      {getOtherParticipant(activeConversation).name.charAt(0)}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="fw-bold text-dark truncate">{getOtherParticipant(activeConversation).name}</div>
-                    <div className="text-primary small truncate fw-medium">{activeConversation.serviceName}</div>
-                  </div>
-                </div>
-
-                {/* Messages */}
-                <div className="flex-grow-1 overflow-auto p-4 bg-light bg-opacity-10">
-                  <div className="d-flex flex-column gap-3">
-                    {messages.map(msg => {
-                      const isOwn = msg.senderId === user?.id;
-
-                      return (
-                        <div
-                          key={msg.id}
-                          className={`d-flex gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}
-                        >
-                          <div className="rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm border" style={{ width: 32, height: 32 }}>
-                            <span className={`small fw-bold ${isOwn ? 'text-primary' : 'text-muted'}`}>
-                              {msg.senderName.charAt(0)}
-                            </span>
-                          </div>
-                          <div className={`p-3 rounded-4 shadow-sm border max-w-75 ${isOwn ? 'bg-primary text-white border-primary' : 'bg-white text-dark'}`}>
-                            <p className="mb-1 small">{msg.content}</p>
-                            <div className={`text-end ${isOwn ? 'text-white-50' : 'text-muted'}`} style={{ fontSize: '0.65rem' }}>
-                              {formatTime(msg.timestamp)}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <div ref={messagesEndRef} />
-                  </div>
-                </div>
-
-                {/* Message Input */}
-                <div className="p-3 border-top bg-white">
-                  <form onSubmit={handleSendMessage} className="d-flex gap-2">
-                    <Input
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder="Type a message..."
-                      className="flex-grow-1 px-3 py-2 border-primary border-opacity-25 shadow-none"
-                    />
-                    <Button type="submit" disabled={!newMessage.trim()} className="rounded-circle p-2 d-flex align-items-center justify-content-center">
-                      <Send size={18} />
-                    </Button>
-                  </form>
-                </div>
-              </>
-            ) : (
-              <div className="flex-grow-1 d-flex flex-column align-items-center justify-content-center p-5 text-center">
-                <div className="p-4 bg-light rounded-circle mb-4 shadow-sm border">
-                  <MessageSquare size={48} className="text-muted opacity-50" />
-                </div>
-                <h3 className="h5 fw-bold text-dark">Your Messages</h3>
-                <p className="text-muted small" style={{ maxWidth: 300 }}>
-                  Select a conversation from the list to start messaging with your clients or vendors.
-                </p>
-              </div>
+            {/* ✅ When opened from order chat, give a back button */}
+            {conversationId && (
+              <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => navigate("/orders")}
+              >
+                Back
+              </button>
             )}
-          </Col>
-        </Row>
-      </Container>
+          </div>
+
+          {visibleConversations.length === 0 && <p>No conversations</p>}
+
+          {visibleConversations.map((c) => {
+  const unread = unreadByConversation?.[c.id] || 0;
+
+  return (
+    <div
+      key={c.id}
+      className={`conv-item ${
+        String(activeConversation?.id) === String(c.id) ? "active" : ""
+      }`}
+      onClick={() => navigate(`/messages/${c.id}`)}
+      style={{ position: "relative" }} // ✅ needed for badge positioning
+    >
+      <strong>{getOtherName(c)}</strong>
+      <div className="service">{c.service_name}</div>
+
+      {/* ✅ Unread badge (only when unread > 0) */}
+      {unread > 0 && (
+        <span className="unread-badge">
+          {unread > 99 ? "99+" : unread}
+        </span>
+      )}
+    </div>
+  );
+})}
+
+        </div>
+
+        {/* Chat Area */}
+        <div className="chat-area">
+          {!activeConversation ? (
+            <div className="empty">Select a conversation</div>
+          ) : (
+            <>
+              <div className="chat-header">{getOtherName(activeConversation)}</div>
+
+              <div className="chat-body">
+                {messages.map((m) => {
+                  const isOwn = String(m.senderId) === String(user?.uid);
+                  return (
+                    <div key={m.id} className={`msg ${isOwn ? "own" : ""}`}>
+                      <div className="bubble">{m.text}</div>
+                    </div>
+                  );
+                })}
+                <div ref={bottomRef} />
+              </div>
+
+              <form className="chat-input" onSubmit={handleSend}>
+                <input
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="Type message..."
+                />
+                <button type="submit" disabled={!text.trim()}>
+                  Send
+                </button>
+              </form>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ✅ layout CSS (without this, it looks like everything is "one column") */}
       <style>{`
-        .max-w-75 { max-width: 75%; }
-        @media (max-width: 767.98px) {
-            .max-w-75 { max-width: 85%; }
+        .messages-page{
+          display:flex;
+          height: calc(100vh - 180px);
+          border:1px solid #eee;
+          border-radius:12px;
+          overflow:hidden;
+          background:#fff;
         }
+        .sidebar{
+          width:320px;
+          border-right:1px solid #eee;
+          padding:16px;
+          overflow:auto;
+        }
+        .chat-area{
+          flex:1;
+          display:flex;
+          flex-direction:column;
+        }
+        .chat-header{
+          padding:16px;
+          border-bottom:1px solid #eee;
+          font-weight:700;
+        }
+        .chat-body{
+          flex:1;
+          padding:16px;
+          overflow:auto;
+          background:#fafafa;
+        }
+        .chat-input{
+          display:flex;
+          gap:8px;
+          padding:12px;
+          border-top:1px solid #eee;
+          background:#fff;
+        }
+        .chat-input input{
+          flex:1;
+          padding:10px 12px;
+          border:1px solid #ddd;
+          border-radius:8px;
+          outline:none;
+        }
+        .chat-input button{
+          padding:10px 14px;
+          border-radius:8px;
+          border:1px solid #0d6efd;
+          background:#0d6efd;
+          color:#fff;
+        }
+        .conv-item{
+          padding:10px 12px;
+          border:1px solid #eee;
+          border-radius:10px;
+          margin-bottom:10px;
+          cursor:pointer;
+        }
+        .conv-item.active{
+          border-color:#0d6efd;
+          background: rgba(13,110,253,0.08);
+        }
+        .service{ font-size:12px; color:#666; margin-top:4px; }
+        .msg{ display:flex; margin-bottom:10px; }
+        .msg.own{ justify-content:flex-end; }
+        .bubble{
+          max-width:70%;
+          padding:10px 12px;
+          border-radius:12px;
+          background:#fff;
+          border:1px solid #eaeaea;
+        }
+        .msg.own .bubble{
+          background:#0d6efd;
+          color:#fff;
+          border-color:#0d6efd;
+        }
+        @media (max-width: 768px){
+          .messages-page{ flex-direction:column; height:auto; }
+          .sidebar{ width:100%; border-right:0; border-bottom:1px solid #eee; }
+        }
+          .unread-badge{
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:#0d6efd;
+  color:#fff;
+  font-size:0.65rem;
+  padding:0.25em 0.45em;
+  border-radius:999px;
+  min-width:1.4rem;
+  text-align:center;
+  font-weight:600;
+}
+
       `}</style>
     </Layout>
   );
