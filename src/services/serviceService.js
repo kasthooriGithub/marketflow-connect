@@ -18,15 +18,28 @@ export const serviceService = {
         const servicesRef = collection(db, 'services');
 
         const serviceData = {
-            ...data,
             vendor_id: vendorId,
+            title: data.title,
+            category_id: data.category_id || data.categoryId || '',
+            category_slug: data.category_slug || data.categorySlug || '',
+            short_description: data.short_description || data.shortDescription || '',
+            long_description: data.long_description || data.longDescription || data.description || '',
+            price: data.price,
+            price_type: data.price_type || data.priceType || 'fixed',
+            delivery_time_days: data.delivery_time_days || data.deliveryTimeDays || 7,
+            features: data.features || [],
+            tags: data.tags || [],
+            featured: data.featured || false,
+            is_active: data.is_active !== undefined ? data.is_active : true,
+            average_rating: 0,
+            total_reviews: 0,
+            total_orders: 0,
             created_at: Timestamp.now(),
             updated_at: Timestamp.now(),
         };
 
         const docRef = await addDoc(servicesRef, serviceData);
 
-        // Return the service with the generated ID
         return {
             id: docRef.id,
             ...serviceData
@@ -65,6 +78,7 @@ export const serviceService = {
         };
         await updateDoc(serviceRef, updateData);
     },
+
     async deleteService(serviceId) {
         const serviceRef = doc(db, "services", serviceId);
         await deleteDoc(serviceRef);

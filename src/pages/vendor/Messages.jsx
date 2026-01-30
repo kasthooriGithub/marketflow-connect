@@ -6,6 +6,8 @@ import { Button } from 'components/ui/button';
 import { Input } from 'components/ui/input';
 import { Send, MessageSquare, ArrowLeft } from 'lucide-react';
 import { Container, Row, Col } from 'react-bootstrap';
+import { ProposalModal } from 'components/vendor/ProposalModal';
+import { FileText } from 'lucide-react';
 
 export default function Messages() {
   const { user } = useAuth();
@@ -18,6 +20,7 @@ export default function Messages() {
   } = useMessaging();
 
   const [newMessage, setNewMessage] = useState('');
+  const [showProposalModal, setShowProposalModal] = useState(false);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -100,7 +103,7 @@ export default function Messages() {
                             </div>
                             {conv.lastMessage && (
                               <div className="text-muted small truncate mt-1" style={{ fontSize: '0.75rem' }}>
-                                {conv.lastMessage.senderId === user?.id ? 'You: ' : ''}
+                                {conv.lastMessage.senderId === user?.uid ? 'You: ' : ''}
                                 {conv.lastMessage.content}
                               </div>
                             )}
@@ -133,17 +136,40 @@ export default function Messages() {
                       {getOtherParticipant(activeConversation).name.charAt(0)}
                     </span>
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-grow-1">
                     <div className="fw-bold text-dark truncate">{getOtherParticipant(activeConversation).name}</div>
                     <div className="text-primary small truncate fw-medium">{activeConversation.serviceName}</div>
                   </div>
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    className="d-flex align-items-center gap-2"
+                    onClick={() => setShowProposalModal(true)}
+                  >
+                    <FileText size={16} />
+                    <span>Send Proposal</span>
+                  </Button>
                 </div>
+
+                <ProposalModal
+                  open={showProposalModal}
+                  onOpenChange={setShowProposalModal}
+                  client={{
+                    uid: activeConversation.participants.clientId,
+                    name: activeConversation.participants.clientName
+                  }}
+                  vendor={user}
+                  service={{
+                    id: activeConversation.serviceId,
+                    name: activeConversation.serviceName
+                  }}
+                />
 
                 {/* Messages */}
                 <div className="flex-grow-1 overflow-auto p-4 bg-light bg-opacity-10">
                   <div className="d-flex flex-column gap-3">
                     {messages.map(msg => {
-                      const isOwn = msg.senderId === user?.id;
+                      const isOwn = msg.senderId === user?.uid;
 
                       return (
                         <div

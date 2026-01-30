@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { initialServices, categories } from 'data/services';
 import { useAuth } from 'contexts/AuthContext';
-import { db, storage } from 'lib/firebase';
+import { storage } from 'lib/firebase';
 import { serviceService } from 'services/serviceService';
 import { vendorService } from 'services/vendorService';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -10,6 +10,10 @@ const VendorServicesContext = createContext(undefined);
 
 export function VendorServicesProvider({ children }) {
   const { user } = useAuth();
+
+  // ✅ SINGLE SOURCE OF TRUTH
+  const authUid = user?.uid;
+
   const [allServices, setAllServices] = useState(initialServices || []);
   const [currentVendor, setCurrentVendor] = useState(null);
   const [loadingVendor, setLoadingVendor] = useState(false);
@@ -17,23 +21,27 @@ export function VendorServicesProvider({ children }) {
   // Fetch Vendor Profile from Firestore
   useEffect(() => {
     async function fetchVendor() {
-      if (!user || user.role !== 'vendor') {
+      if (!user || user.role !== 'vendor' || !authUid) {
         setCurrentVendor(null);
         return;
       }
 
       setLoadingVendor(true);
       try {
-        const profile = await vendorService.getVendorProfile(user.id);
+        // ✅ use authUid (uid)
+        const profile = await vendorService.getVendorProfile(authUid);
+
         if (profile) {
+          const createdAt = profile.created_at?.toDate ? profile.created_at.toDate() : null;
+
           const uiVendor = {
-            id: profile.uid,
+            id: profile.uid || authUid,
             name: user.name,
             email: user.email,
             tagline: '',
             description: profile.bio || '',
             location: profile.location || '',
-            memberSince: profile.created_at.toDate().getFullYear().toString(),
+            memberSince: createdAt ? String(createdAt.getFullYear()) : '',
             responseTime: '24 hours',
             completionRate: 100,
             totalProjects: 0,
@@ -47,6 +55,7 @@ export function VendorServicesProvider({ children }) {
             avatar: profile.profile_image,
             coverImage: profile.cover_image
           };
+
           setCurrentVendor(uiVendor);
         }
       } catch (error) {
@@ -57,14 +66,16 @@ export function VendorServicesProvider({ children }) {
     }
 
     fetchVendor();
-  }, [user]);
+  }, [user, authUid]);
 
   // Fetch services function
   useEffect(() => {
     async function loadAllServices() {
-      if (user && user.role === 'vendor') {
+      if (user && user.role === 'vendor' && authUid) {
         try {
-          const myServices = await serviceService.getServicesByVendor(user.id);
+          // ✅ use authUid (uid)
+          const myServices = await serviceService.getServicesByVendor(authUid);
+
           const mappedServices = myServices.map(s => ({
             id: s.id,
             title: s.title,
@@ -73,34 +84,45 @@ export function VendorServicesProvider({ children }) {
             category: s.category,
             price: s.base_price,
             priceType: s.pricing_type === 'subscription' ? 'monthly' : 'one-time',
-            vendorId: s.vendorId,
+
+            // ✅ normalize vendor id in UI objects
+            vendorId: s.vendor_id || s.vendorId || authUid,
             vendorName: user.name,
+
             rating: 0,
             reviewCount: 0,
             deliveryTime: '2 days',
             features: [],
             tags: [],
-            image: s.images[0] || '/placeholder.svg',
+            image: s.images?.[0] || '/placeholder.svg',
             popular: false
           }));
 
-          setAllServices(prev => [...(initialServices || []), ...mappedServices]);
+          // prevent duplicates if effect runs again
+          setAllServices(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const merged = [...prev];
+            mappedServices.forEach(ms => {
+              if (!existingIds.has(ms.id)) merged.push(ms);
+            });
+            return merged;
+          });
         } catch (error) {
           console.error("Error loading services:", error);
         }
       }
     }
     loadAllServices();
-  }, [user]);
+  }, [user, authUid]);
 
-  const vendorServices = user?.role === 'vendor'
-    ? allServices.filter(s => s.vendorId === user.id)
+  const vendorServices = (user?.role === 'vendor' && authUid)
+    ? allServices.filter(s => String(s.vendorId) === String(authUid))
     : [];
 
   const addService = async (newService) => {
-    if (!user) throw new Error("No user");
+    if (!user || !authUid) throw new Error("Not authenticated");
 
-    const created = await serviceService.createService(user.id, {
+    const created = await serviceService.createService(authUid, {
       title: newService.title,
       description: newService.description,
       category: newService.category,
@@ -119,7 +141,7 @@ export function VendorServicesProvider({ children }) {
       category: created.category,
       price: created.base_price,
       priceType: created.pricing_type === 'subscription' ? 'monthly' : 'one-time',
-      vendorId: user.id,
+      vendorId: authUid,
       vendorName: user.name,
       rating: 0,
       reviewCount: 0,
@@ -148,21 +170,19 @@ export function VendorServicesProvider({ children }) {
     setAllServices(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
   };
 
-
-
   const deleteService = async (id) => {
     await serviceService.deleteService(id);
     setAllServices(prev => prev.filter(s => s.id !== id));
   };
 
   const getServicesByVendor = (vendorId) => {
-    return allServices.filter(s => s.vendorId === vendorId);
+    return allServices.filter(s => String(s.vendorId) === String(vendorId));
   };
 
   const updateVendorProfile = async (updates) => {
-    if (!user || !currentVendor) return;
+    if (!user || !currentVendor || !authUid) return;
     try {
-      await vendorService.updateVendorProfile(user.id, {
+      await vendorService.updateVendorProfile(authUid, {
         bio: updates.description,
         location: updates.location,
       });
@@ -174,8 +194,8 @@ export function VendorServicesProvider({ children }) {
   };
 
   const uploadVendorImage = async (file, path) => {
-    if (!user) throw new Error("Not authenticated");
-    const storageRef = ref(storage, `vendors/${user.id}/${path}/${Date.now()}_${file.name}`);
+    if (!user || !authUid) throw new Error("Not authenticated");
+    const storageRef = ref(storage, `vendors/${authUid}/${path}/${Date.now()}_${file.name}`);
     await uploadBytes(storageRef, file);
     return getDownloadURL(storageRef);
   };

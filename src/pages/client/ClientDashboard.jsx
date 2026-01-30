@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from 'contexts/AuthContext';
 import { Layout } from 'components/layout/Layout';
+import { ProposalDetailModal } from 'components/client/ProposalDetailModal';
 import {
     LayoutDashboard,
     ShoppingBag,
@@ -9,6 +10,7 @@ import {
     MessageSquare,
     Settings,
     TrendingUp,
+    FileText,
 } from 'lucide-react';
 import { Container, Row, Col, Card } from 'react-bootstrap';
 import {
@@ -22,11 +24,15 @@ import {
 } from 'firebase/firestore';
 import { db } from 'lib/firebase';
 import { getSavedServicesCount } from 'services/savedServiceService';
+import { proposalService } from 'services/proposalService';
 
 export default function ClientDashboard() {
     const { user } = useAuth();
     const [stats, setStats] = useState([]);
     const [recentActivity, setRecentActivity] = useState([]);
+    const [proposals, setProposals] = useState([]);
+    const [selectedProposal, setSelectedProposal] = useState(null);
+    const [showProposalModal, setShowProposalModal] = useState(false);
     const [loading, setLoading] = useState(true);
 
     const quickLinks = [
@@ -111,6 +117,22 @@ export default function ClientDashboard() {
 
         fetchDashboardData();
     }, [user]);
+
+    // Subscribe to proposals
+    useEffect(() => {
+        if (!user?.uid) return;
+
+        const unsubscribe = proposalService.subscribeToClientProposals(user.uid, (fetchedProposals) => {
+            setProposals(fetchedProposals.filter(p => p.status === 'pending' || p.status === 'changes_requested'));
+        });
+
+        return () => unsubscribe();
+    }, [user]);
+
+    const handleProposalClick = (proposal) => {
+        setSelectedProposal(proposal);
+        setShowProposalModal(true);
+    };
 
     const formatTimeAgo = (timestamp) => {
         if (!timestamp) return 'Recently';
@@ -231,10 +253,57 @@ export default function ClientDashboard() {
                             </Card>
                         </Col>
                     </Row>
+
+                    {/* Proposals Section */}
+                    {proposals.length > 0 && (
+                        <Row className="mt-4">
+                            <Col>
+                                <Card className="border">
+                                    <Card.Body className="p-4">
+                                        <h2 className="h5 fw-bold mb-4">Pending Proposals</h2>
+                                        <div className="d-flex flex-column gap-3">
+                                            {proposals.map((proposal) => (
+                                                <div
+                                                    key={proposal.id}
+                                                    className="d-flex align-items-center justify-content-between p-3 rounded bg-light cursor-pointer hover-bg-gray"
+                                                    onClick={() => handleProposalClick(proposal)}
+                                                >
+                                                    <div className="d-flex align-items-center gap-3">
+                                                        <div className="rounded-circle p-2 d-flex align-items-center justify-content-center bg-primary bg-opacity-10" style={{ width: 40, height: 40 }}>
+                                                            <FileText size={20} className="text-primary" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="small fw-bold text-dark mb-0">{proposal.title}</p>
+                                                            <p className="small text-muted mb-0">{proposal.service_name} • ${proposal.price}</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className="badge bg-warning text-dark rounded-pill px-3">
+                                                        {proposal.status === 'changes_requested' ? 'Changes Requested' : 'New'}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </Card.Body>
+                                </Card>
+                            </Col>
+                        </Row>
+                    )}
                 </Container>
             </div>
+
+            <ProposalDetailModal
+                open={showProposalModal}
+                onOpenChange={setShowProposalModal}
+                proposal={selectedProposal}
+                onActionComplete={() => {
+                    setShowProposalModal(false);
+                    setSelectedProposal(null);
+                }}
+            />
+
             <style>{`
         .hover-bg-gray:hover { background-color: #e9ecef !important; }
+        .cursor-pointer { cursor: pointer; }
       `}</style>
         </Layout>
     );
