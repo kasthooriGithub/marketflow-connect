@@ -268,7 +268,7 @@ export default function VendorProfile() {
   };
 
   const displayVendor = currentVendor || {
-    id: user?.id || 'unknown',
+    id: user?.uid || 'unknown',
     name: user?.name || 'Your Name',
     email: user?.email || '',
     tagline: 'Your tagline goes here',

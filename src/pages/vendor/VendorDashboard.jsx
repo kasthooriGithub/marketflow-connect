@@ -13,7 +13,8 @@ import {
     TrendingUp,
     Users,
     DollarSign,
-    Briefcase
+    Briefcase,
+    FileText
 } from 'lucide-react';
 import { Container, Row, Col, Card } from 'react-bootstrap';
 import {
@@ -26,12 +27,14 @@ import {
     limit
 } from 'firebase/firestore';
 import { db } from 'lib/firebase';
+import { proposalService } from 'services/proposalService';
 
 export default function VendorDashboard() {
     const { user } = useAuth();
     const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
     const [stats, setStats] = useState([]);
     const [recentActivity, setRecentActivity] = useState([]);
+    const [proposals, setProposals] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const quickLinks = [
@@ -135,6 +138,17 @@ export default function VendorDashboard() {
         };
 
         fetchDashboardData();
+    }, [user]);
+
+    // Subscribe to proposals
+    useEffect(() => {
+        if (!user?.uid) return;
+
+        const unsubscribe = proposalService.subscribeToVendorProposals(user.uid, (fetchedProposals) => {
+            setProposals(fetchedProposals);
+        });
+
+        return () => unsubscribe();
     }, [user]);
 
     const formatTimeAgo = (timestamp) => {
@@ -260,6 +274,48 @@ export default function VendorDashboard() {
                             </Card>
                         </Col>
                     </Row>
+
+                    {/* Proposals Section */}
+                    {proposals.length > 0 && (
+                        <Row className="mt-4">
+                            <Col>
+                                <Card className="border">
+                                    <Card.Body className="p-4">
+                                        <h2 className="h5 fw-bold mb-4">Sent Proposals ({proposals.length})</h2>
+                                        <div className="d-flex flex-column gap-3">
+                                            {proposals.map((proposal) => {
+                                                const statusColors = {
+                                                    pending: 'bg-warning text-dark',
+                                                    accepted: 'bg-success text-white',
+                                                    rejected: 'bg-danger text-white',
+                                                    changes_requested: 'bg-secondary text-white'
+                                                };
+                                                return (
+                                                    <div
+                                                        key={proposal.id}
+                                                        className="d-flex align-items-center justify-content-between p-3 rounded bg-light"
+                                                    >
+                                                        <div className="d-flex align-items-center gap-3">
+                                                            <div className="rounded-circle p-2 d-flex align-items-center justify-content-center bg-primary bg-opacity-10" style={{ width: 40, height: 40 }}>
+                                                                <FileText size={20} className="text-primary" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="small fw-bold text-dark mb-0">{proposal.title}</p>
+                                                                <p className="small text-muted mb-0">{proposal.service_name} • ${proposal.price} • {proposal.delivery_time}</p>
+                                                            </div>
+                                                        </div>
+                                                        <span className={`badge rounded-pill px-3 ${statusColors[proposal.status] || 'bg-secondary'}`}>
+                                                            {proposal.status.replace('_', ' ')}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </Card.Body>
+                                </Card>
+                            </Col>
+                        </Row>
+                    )}
                 </Container>
             </div>
 

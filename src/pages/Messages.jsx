@@ -1,3 +1,4 @@
+// src/pages/Messages.jsx
 import { useState, useEffect, useRef } from 'react';
 import { Layout } from 'components/layout/Layout';
 import { useMessaging } from 'contexts/MessagingContext';
@@ -15,6 +16,8 @@ export default function Messages() {
     setActiveConversation,
     sendMessage,
     messages,
+    unreadCountByConversation,   // ✅ NEW
+    markConversationAsRead,      // ✅ NEW
   } = useMessaging();
 
   const [newMessage, setNewMessage] = useState('');
@@ -59,48 +62,80 @@ export default function Messages() {
       <Container className="py-5">
         <h1 className="h3 fw-bold mb-4">Messages</h1>
 
-        <Row className="g-0 border rounded-4 overflow-hidden bg-white shadow-sm" style={{ height: 'calc(100vh - 280px)', minHeight: '500px' }}>
+        <Row
+          className="g-0 border rounded-4 overflow-hidden bg-white shadow-sm"
+          style={{ height: 'calc(100vh - 280px)', minHeight: '500px' }}
+        >
           {/* Conversations List */}
-          <Col md={4} className={`border-end flex-column ${activeConversation && 'd-none d-md-flex'}`} style={{ display: 'flex' }}>
+          <Col
+            md={4}
+            className={`border-end flex-column ${activeConversation && 'd-none d-md-flex'}`}
+            style={{ display: 'flex' }}
+          >
             <div className="p-3 border-bottom bg-light bg-opacity-50">
               <h2 className="h6 fw-bold mb-0">Conversations</h2>
             </div>
+
             <div className="flex-grow-1 overflow-auto">
               {conversations.length === 0 ? (
-                <div className="p-4 text-center text-muted small">
-                  No conversations found.
-                </div>
+                <div className="p-4 text-center text-muted small">No conversations found.</div>
               ) : (
                 <div className="list-group list-group-flush">
-                  {conversations.map(conv => {
+                  {conversations.map((conv) => {
                     const other = getOtherParticipant(conv);
                     const isActive = activeConversation?.id === conv.id;
+                    const unreadForThis = unreadCountByConversation?.[conv.id] || 0;
 
                     return (
                       <button
                         key={conv.id}
-                        onClick={() => setActiveConversation(conv)}
-                        className={`list-group-item list-group-item-action border-0 border-bottom p-3 ${isActive ? 'bg-primary bg-opacity-10' : ''}`}
+                        onClick={() => {
+                          setActiveConversation(conv);
+                          // ✅ mark this conversation unread messages as read
+                          markConversationAsRead?.(conv.id);
+                        }}
+                        className={`list-group-item list-group-item-action border-0 border-bottom p-3 ${
+                          isActive ? 'bg-primary bg-opacity-10' : ''
+                        }`}
                       >
                         <div className="d-flex gap-3">
-                          <div className="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 40, height: 40 }}>
-                            <span className="text-primary fw-bold">{other.name.charAt(0)}</span>
+                          <div
+                            className="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0"
+                            style={{ width: 40, height: 40 }}
+                          >
+                            <span className="text-primary fw-bold">{other.name?.charAt(0)}</span>
                           </div>
+
                           <div className="flex-grow-1 min-w-0">
                             <div className="d-flex justify-content-between align-items-center mb-1">
                               <div className="fw-semibold text-dark truncate small">{other.name}</div>
-                              {conv.lastMessage && (
-                                <span className="text-muted" style={{ fontSize: '0.7rem' }}>
-                                  {formatTime(conv.lastMessage.timestamp)}
-                                </span>
-                              )}
+
+                              <div className="d-flex align-items-center gap-2">
+                                {/* ✅ Unread badge */}
+                                {unreadForThis > 0 && (
+                                  <span
+                                    className="badge rounded-pill bg-danger"
+                                    style={{ fontSize: '0.65rem', padding: '0.25em 0.5em' }}
+                                  >
+                                    {unreadForThis}
+                                  </span>
+                                )}
+
+                                {conv.lastMessage && (
+                                  <span className="text-muted" style={{ fontSize: '0.7rem' }}>
+                                    {formatTime(conv.lastMessage.timestamp)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
+
                             <div className="text-primary small truncate fw-medium" style={{ fontSize: '0.75rem' }}>
                               {conv.serviceName}
                             </div>
+
                             {conv.lastMessage && (
                               <div className="text-muted small truncate mt-1" style={{ fontSize: '0.75rem' }}>
-                                {conv.lastMessage.senderId === user?.id ? 'You: ' : ''}
+                                {conv.lastMessage.senderId === user?.uid ? 'You: ' : ''}
                                 {conv.lastMessage.content}
                               </div>
                             )}
@@ -115,7 +150,11 @@ export default function Messages() {
           </Col>
 
           {/* Chat Area */}
-          <Col md={8} className={`flex-column ${!activeConversation && 'd-none d-md-flex'}`} style={{ display: 'flex' }}>
+          <Col
+            md={8}
+            className={`flex-column ${!activeConversation && 'd-none d-md-flex'}`}
+            style={{ display: 'flex' }}
+          >
             {activeConversation ? (
               <>
                 {/* Chat Header */}
@@ -128,11 +167,16 @@ export default function Messages() {
                   >
                     <ArrowLeft size={20} />
                   </Button>
-                  <div className="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 40, height: 40 }}>
+
+                  <div
+                    className="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0"
+                    style={{ width: 40, height: 40 }}
+                  >
                     <span className="text-primary fw-bold">
-                      {getOtherParticipant(activeConversation).name.charAt(0)}
+                      {getOtherParticipant(activeConversation).name?.charAt(0)}
                     </span>
                   </div>
+
                   <div className="min-w-0">
                     <div className="fw-bold text-dark truncate">{getOtherParticipant(activeConversation).name}</div>
                     <div className="text-primary small truncate fw-medium">{activeConversation.serviceName}</div>
@@ -142,20 +186,25 @@ export default function Messages() {
                 {/* Messages */}
                 <div className="flex-grow-1 overflow-auto p-4 bg-light bg-opacity-10">
                   <div className="d-flex flex-column gap-3">
-                    {messages.map(msg => {
-                      const isOwn = msg.senderId === user?.id;
+                    {messages.map((msg) => {
+                      const isOwn = msg.senderId === user?.uid;
 
                       return (
-                        <div
-                          key={msg.id}
-                          className={`d-flex gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}
-                        >
-                          <div className="rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm border" style={{ width: 32, height: 32 }}>
+                        <div key={msg.id} className={`d-flex gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                          <div
+                            className="rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm border"
+                            style={{ width: 32, height: 32 }}
+                          >
                             <span className={`small fw-bold ${isOwn ? 'text-primary' : 'text-muted'}`}>
-                              {msg.senderName.charAt(0)}
+                              {msg.senderName?.charAt(0)}
                             </span>
                           </div>
-                          <div className={`p-3 rounded-4 shadow-sm border max-w-75 ${isOwn ? 'bg-primary text-white border-primary' : 'bg-white text-dark'}`}>
+
+                          <div
+                            className={`p-3 rounded-4 shadow-sm border max-w-75 ${
+                              isOwn ? 'bg-primary text-white border-primary' : 'bg-white text-dark'
+                            }`}
+                          >
                             <p className="mb-1 small">{msg.content}</p>
                             <div className={`text-end ${isOwn ? 'text-white-50' : 'text-muted'}`} style={{ fontSize: '0.65rem' }}>
                               {formatTime(msg.timestamp)}
@@ -177,7 +226,11 @@ export default function Messages() {
                       placeholder="Type a message..."
                       className="flex-grow-1 px-3 py-2 border-primary border-opacity-25 shadow-none"
                     />
-                    <Button type="submit" disabled={!newMessage.trim()} className="rounded-circle p-2 d-flex align-items-center justify-content-center">
+                    <Button
+                      type="submit"
+                      disabled={!newMessage.trim()}
+                      className="rounded-circle p-2 d-flex align-items-center justify-content-center"
+                    >
                       <Send size={18} />
                     </Button>
                   </form>
@@ -197,10 +250,11 @@ export default function Messages() {
           </Col>
         </Row>
       </Container>
+
       <style>{`
         .max-w-75 { max-width: 75%; }
         @media (max-width: 767.98px) {
-            .max-w-75 { max-width: 85%; }
+          .max-w-75 { max-width: 85%; }
         }
       `}</style>
     </Layout>

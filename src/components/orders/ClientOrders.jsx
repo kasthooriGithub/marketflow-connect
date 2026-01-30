@@ -5,10 +5,11 @@ import { useAuth } from 'contexts/AuthContext';
 import { orderService } from 'services/orderService';
 import { chatService } from 'services/chatService';
 import {
-    Package, Clock, CheckCircle, XCircle, AlertCircle, MessageSquare, Eye, X
+    Package, Clock, CheckCircle, XCircle, AlertCircle, MessageSquare, Eye, X, Star
 } from 'lucide-react';
 import { Row, Col, Card, Badge, Modal } from 'react-bootstrap';
 import { toast } from 'sonner';
+import { ReviewModal } from 'components/client/ReviewModal';
 
 const statusConfig = {
     pending: { label: 'Pending', icon: Clock, bg: 'bg-warning', text: 'text-dark' },
@@ -25,6 +26,8 @@ export default function ClientOrders() {
     const [isCancelling, setIsCancelling] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [showReviewModal, setShowReviewModal] = useState(false);
+    const [orderToReview, setOrderToReview] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -77,6 +80,11 @@ export default function ClientOrders() {
             setIsCancelling(false);
             setSelectedOrder(null);
         }
+    };
+
+    const handleReviewClick = (order) => {
+        setOrderToReview(order);
+        setShowReviewModal(true);
     };
 
     if (isLoading) {
@@ -153,6 +161,16 @@ export default function ClientOrders() {
                                     >
                                         <MessageSquare size={16} className="me-2" /> {isChatLoading ? 'Opening...' : 'Chat'}
                                     </Button>
+                                    {order.status === 'completed' && (
+                                        <Button
+                                            variant="primary"
+                                            size="sm"
+                                            className="rounded-pill px-4"
+                                            onClick={() => handleReviewClick(order)}
+                                        >
+                                            <Star size={16} className="me-2" /> Leave Review
+                                        </Button>
+                                    )}
                                 </Col>
                             </Row>
                         </Card.Body>
@@ -177,6 +195,14 @@ export default function ClientOrders() {
                     </Button>
                 </Modal.Footer>
             </Modal>
+
+            {/* Review Modal */}
+            <ReviewModal
+                open={showReviewModal}
+                onOpenChange={setShowReviewModal}
+                order={orderToReview}
+                user={user}
+            />
 
             <style>{`
         .hover-card { transition: all 0.3s ease; border-left: 5px solid transparent !important; }
