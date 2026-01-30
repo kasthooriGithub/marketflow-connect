@@ -171,7 +171,7 @@ export default function MyServices() {
       <style>{`
         .service-banner { 
           height: 120px; 
-          background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); 
+          background: linear-gradient(135deg, #5f79a5 0%, #356ec9 100%); 
           position: relative;
         }
         .banner-overlay {
@@ -183,11 +183,11 @@ export default function MyServices() {
         }
         .hover-card { 
           transition: all 0.3s ease; 
-          border: 1px solid rgba(0,0,0,0.05) !important;
+          border: 1px solid rgba(87, 92, 122, 0.05) !important;
         }
         .hover-card:hover { 
           transform: translateY(-8px); 
-          box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+          box-shadow: 0 15px 30px rgba(198, 160, 160, 0.1) !important;
         }
         .text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       `}</style>

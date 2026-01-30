@@ -1,153 +1,222 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
-import { chatService } from 'services/chatService';
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useAuth } from "./AuthContext";
+import { chatService } from "services/chatService";
+import { db } from "lib/firebase";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 
-const MessagingContext = createContext(undefined);
+const MessagingContext = createContext(null);
 
 export function MessagingProvider({ children }) {
   const { user } = useAuth();
-  const [conversations, setConversations] = useState([]);
-  const [messages, setMessages] = useState([]);
-  const [activeConversation, setActiveConversation] = useState(null);
 
-  // Fetch conversations on load
+  // ✅ IMPORTANT: support both uid & id
+  const authUid = user?.uid || user?.id;
+
+  const [conversations, setConversations] = useState([]);
+  const [activeConversation, setActiveConversation] = useState(null);
+  const [messages, setMessages] = useState([]);
+
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadByConversation, setUnreadByConversation] = useState({}); // ✅ NEW
+
+  const unreadUnsubsRef = useRef([]);
+
+  // helper: load names from profile collections
+  const getClientNameByUid = async (uid) => {
+    try {
+      const snap = await getDoc(doc(db, "clients", uid));
+      return snap.exists() ? snap.data().display_name || "Client" : "Client";
+    } catch {
+      return "Client";
+    }
+  };
+
+  const getVendorNameByUid = async (uid) => {
+    try {
+      const snap = await getDoc(doc(db, "vendors", uid));
+      return snap.exists() ? snap.data().agency_name || "Vendor" : "Vendor";
+    } catch {
+      return "Vendor";
+    }
+  };
+
+  // ✅ Mark unread messages as read (when open)
+  const markConversationAsRead = async (conversationId) => {
+    if (!authUid || !conversationId) return;
+
+    const messagesRef = collection(db, "conversations", conversationId, "messages");
+    const q = query(
+      messagesRef,
+      where("receiver_id", "==", authUid),
+      where("read", "==", false)
+    );
+
+    const snap = await getDocs(q);
+    await Promise.all(snap.docs.map((d) => updateDoc(d.ref, { read: true })));
+  };
+
+  // Load conversations + enrich names
   useEffect(() => {
-    if (!user) {
+    if (!authUid) {
       setConversations([]);
+      setActiveConversation(null);
+      setMessages([]);
+      setUnreadCount(0);
+      setUnreadByConversation({}); // ✅ NEW reset
       return;
     }
 
-    const fetchConversations = async () => {
+    const load = async () => {
       try {
-        const firestoreConvs = await chatService.getUserConversations(user.uid);
+        const convs = await chatService.getUserConversations(authUid);
 
-        const mappedConvs = firestoreConvs.map(fc => ({
-          id: fc.id,
-          serviceId: fc.service_id,
-          serviceName: fc.service_name || 'Service Inquiry',
-          participants: {
-            clientId: fc.client_id,
-            clientName: fc.client_id === user.uid ? (user.name || user.full_name || 'Me') : 'Client',
-            vendorId: fc.vendor_id,
-            vendorName: fc.vendor_id === user.uid ? (user.name || user.full_name || 'Me') : 'Vendor'
-          },
-          lastMessage: fc.lastMessage,
-          createdAt: fc.created_at?.toDate ? fc.created_at.toDate().toISOString() : new Date().toISOString(),
-          updatedAt: fc.updated_at?.toDate ? fc.updated_at.toDate().toISOString() : new Date().toISOString(),
-        }));
+        const enriched = await Promise.all(
+          convs.map(async (c) => {
+            const clientName =
+              !c.client_name || c.client_name === "Client"
+                ? c.client_id
+                  ? await getClientNameByUid(c.client_id)
+                  : "Client"
+                : c.client_name;
 
-        setConversations(mappedConvs);
-      } catch (error) {
-        console.error("Error fetching conversations:", error);
+            const vendorName =
+              !c.vendor_name || c.vendor_name === "Vendor"
+                ? c.vendor_id
+                  ? await getVendorNameByUid(c.vendor_id)
+                  : "Vendor"
+                : c.vendor_name;
+
+            return {
+              ...c,
+              client_name: clientName,
+              vendor_name: vendorName,
+            };
+          })
+        );
+
+        setConversations(enriched);
+      } catch (e) {
+        console.error("Error loading conversations:", e);
+        setConversations([]);
       }
     };
 
-    fetchConversations();
-  }, [user]);
+    load();
+  }, [authUid]);
 
-  // Subscribe to messages when active conversation changes
+  // ✅ REALTIME unreadCount + unreadByConversation
   useEffect(() => {
-    if (!activeConversation) return;
+    unreadUnsubsRef.current.forEach((fn) => fn && fn());
+    unreadUnsubsRef.current = [];
+    setUnreadCount(0);
+    setUnreadByConversation({}); // ✅ NEW reset
 
-    const unsubscribe = chatService.subscribeToMessages(activeConversation.id, (firestoreMessages) => {
-      const uiMessages = firestoreMessages.map(m => ({
-        id: m.id,
-        conversationId: activeConversation.id,
-        senderId: m.senderId,
-        senderName: m.senderId === user?.id ? (user?.name || '') : 'User', // Simple fallback
-        senderRole: 'client', // Unknown without lookup
-        content: m.content,
-        timestamp: m.timestamp.toDate().toISOString(),
-        read: m.read
-      }));
-      setMessages(uiMessages);
+    if (!authUid || conversations.length === 0) return;
+
+    const countsMap = new Map();
+
+    const recompute = () => {
+      let total = 0;
+      const obj = {};
+
+      countsMap.forEach((v, k) => {
+        total += v;
+        obj[k] = v;
+      });
+
+      setUnreadCount(total);
+      setUnreadByConversation(obj); // ✅ NEW
+    };
+
+    conversations.forEach((c) => {
+      if (!c?.id) return;
+
+      const messagesRef = collection(db, "conversations", c.id, "messages");
+      const q = query(
+        messagesRef,
+        where("receiver_id", "==", authUid),
+        where("read", "==", false)
+      );
+
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          countsMap.set(c.id, snap.size);
+          recompute();
+        },
+        (err) => console.error("Unread listener error:", err)
+      );
+
+      unreadUnsubsRef.current.push(unsub);
     });
 
-    return () => unsubscribe();
-  }, [activeConversation, user]);
+    return () => {
+      unreadUnsubsRef.current.forEach((fn) => fn && fn());
+      unreadUnsubsRef.current = [];
+    };
+  }, [authUid, conversations]);
 
-
-  const startConversation = async (
-    vendorId,
-    vendorName,
-    serviceId,
-    serviceName
-  ) => {
-    if (!user) throw new Error('Must be logged in');
-
-    try {
-      const convId = await chatService.startConversation([user.id, vendorId], serviceId);
-
-      // Optimistic UI update or fetch fresh
-      const newConv = {
-        id: convId,
-        serviceId,
-        serviceName,
-        participants: {
-          clientId: user.id,
-          clientName: user.name,
-          vendorId,
-          vendorName,
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      const existing = conversations.find(c => c.id === convId);
-      if (existing) return existing;
-
-      setConversations(prev => [...prev, newConv]);
-      return newConv;
-
-    } catch (error) {
-      console.error("Error starting conversation:", error);
-      return null;
+  // Subscribe messages when activeConversation changes
+  useEffect(() => {
+    if (!activeConversation?.id) {
+      setMessages([]);
+      return;
     }
-  };
 
-  const sendMessage = async (conversationId, content) => {
-    if (!user) return;
-    try {
-      await chatService.sendMessage(conversationId, user.id, content);
-      // Live listener will update state
-    } catch (error) {
-      console.error("Error sending message:", error);
-    }
-  };
+    setMessages([]);
 
-  const getConversationMessages = (conversationId) => {
-    // No-op here because we use subscription on setActiveConversation
-  };
+    // ✅ opened => mark as read
+    markConversationAsRead(activeConversation.id);
 
-  const getUnreadCount = () => {
-    return 0;
-  };
+    const unsubscribe = chatService.subscribeToMessages(activeConversation.id, (msgs) => {
+      const mapped = msgs.map((m) => ({
+        id: m.id,
+        senderId: m.sender_id,
+        receiverId: m.receiver_id,
+        text: m.text,
+        createdAt: m.created_at?.toDate ? m.created_at.toDate() : new Date(),
+        read: m.read,
+      }));
+      setMessages(mapped);
+    });
 
-  const markAsRead = (conversationId) => {
-    // Implement in chatService if needed
+    return () => unsubscribe && unsubscribe();
+  }, [activeConversation?.id]);
+
+  const sendMessage = async (text) => {
+    if (!activeConversation?.id || !authUid || !text.trim()) return;
+    await chatService.sendMessage(activeConversation.id, authUid, text.trim());
   };
 
   return (
-    <MessagingContext.Provider value={{
-      conversations,
-      messages,
-      activeConversation,
-      setActiveConversation,
-      sendMessage,
-      startConversation,
-      getConversationMessages,
-      getUnreadCount,
-      markAsRead,
-    }}>
+    <MessagingContext.Provider
+      value={{
+        conversations,
+        activeConversation,
+        setActiveConversation,
+        messages,
+        sendMessage,
+        unreadCount,
+        unreadByConversation, // ✅ NEW (Sidebar badge uses this)
+        markConversationAsRead,
+      }}
+    >
       {children}
     </MessagingContext.Provider>
   );
 }
 
 export function useMessaging() {
-  const context = useContext(MessagingContext);
-  if (!context) {
-    throw new Error('useMessaging must be used within a MessagingProvider');
-  }
-  return context;
+  const ctx = useContext(MessagingContext);
+  if (!ctx) throw new Error("useMessaging must be used inside provider");
+  return ctx;
 }

@@ -11,8 +11,8 @@ export function Navbar() {
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
   const { itemCount } = useCart();
-  const { getUnreadCount } = useMessaging();
-  const unreadCount = getUnreadCount();
+  const { unreadCount = 0 } = useMessaging();
+
   const isHomePage = location.pathname === '/';
 
   const clientLinks = [
@@ -109,24 +109,31 @@ export function Navbar() {
             )}
 
             {/* Messages Icon */}
-            {isAuthenticated && (
-              <Link to="/messages" className="position-relative text-secondary hover-primary">
-                <MessageSquare size={20} />
-                {unreadCount > 0 && (
-                  <span
-                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                    style={{
-                      fontSize: '0.6rem',
-                      padding: '0.25em 0.4em',
-                      minWidth: '1.2rem',
-                      transform: 'translate(-20%, -30%)'
-                    }}
-                  >
-                    {unreadCount}
-                  </span>
-                )}
-              </Link>
-            )}
+{isAuthenticated && (
+  <Link
+    to="/messages"
+    className="position-relative text-secondary hover-primary"
+    style={{ display: "inline-flex", alignItems: "center" }}
+  >
+    <MessageSquare size={20} />
+
+    {Number(unreadCount) > 0 && (
+      <span
+        className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary"
+        style={{
+          fontSize: "0.65rem",
+          padding: "0.25em 0.4em",
+          minWidth: "1.2rem",
+          transform: "translate(-20%, -30%)",
+          zIndex: 2
+        }}
+      >
+        {unreadCount > 99 ? "99+" : unreadCount}
+      </span>
+    )}
+  </Link>
+)}
+
 
             {isAuthenticated ? (
               <NavDropdown
