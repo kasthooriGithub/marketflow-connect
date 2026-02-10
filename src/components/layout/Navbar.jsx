@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, ShoppingCart, MessageSquare } from 'lucide-react';
 import { Button } from 'components/ui/button';
 import { useAuth } from 'contexts/AuthContext';
 import { useCart } from 'contexts/CartContext';
 import { useMessaging } from 'contexts/MessagingContext';
+import { NotificationBell } from 'components/layout/NotificationBell';
 import { Navbar as BNavbar, Nav, Container, NavDropdown } from 'react-bootstrap';
 
 export function Navbar() {
@@ -14,23 +14,48 @@ export function Navbar() {
   const { unreadCount = 0 } = useMessaging();
 
   const isHomePage = location.pathname === '/';
+  const role = user?.role;
+
+  // ✅ Role based paths (match App.jsx)
+  const paths = {
+    client: {
+      dashboard: '/client/dashboard',
+      orders: '/client/orders',
+      messages: '/client/messages',
+      profile: '/client/profile',
+      settings: '/client/settings',
+      saved: '/client/saved-services',
+      paymentHistory: '/client/payment-history',
+    },
+    vendor: {
+      dashboard: '/vendor/dashboard',
+      orders: '/vendor/orders',
+      messages: '/vendor/messages',
+      profile: '/vendor/profile',
+      settings: '/vendor/settings',
+      myServices: '/my-services',
+      guide: '/vendor/guide',
+    }
+  };
+
+  const activePaths = role === 'vendor' ? paths.vendor : paths.client;
 
   const clientLinks = [
-    { href: '/dashboard', label: 'Dashboard' },
+    { href: paths.client.dashboard, label: 'Dashboard' },
     { href: '/services', label: 'Browse Services' },
-    { href: '/orders', label: 'My Orders' },
+    { href: paths.client.orders, label: 'My Orders' },
   ];
 
   const vendorLinks = [
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/my-services', label: 'My Services' },
-    { href: '/orders', label: 'Orders' },
-    { href: '/vendor/guide', label: 'Vendor Guide' },
+    { href: paths.vendor.dashboard, label: 'Dashboard' },
+    { href: paths.vendor.myServices, label: 'My Services' },
+    { href: paths.vendor.orders, label: 'Orders' },
+    { href: paths.vendor.guide, label: 'Vendor Guide' },
   ];
 
   const guestLinks = isHomePage ? [
-    { href: '#features', label: 'Features' },
     { href: '#categories', label: 'Categories' },
+    { href: '#features', label: 'Features' },
     { href: '#how-it-works', label: 'How It Works' },
     { href: '#pricing', label: 'Pricing' },
   ] : [
@@ -42,7 +67,7 @@ export function Navbar() {
 
   let navLinks = guestLinks;
   if (isAuthenticated) {
-    navLinks = user?.role === 'vendor' ? vendorLinks : clientLinks;
+    navLinks = role === 'vendor' ? vendorLinks : clientLinks;
   }
 
   const isActive = (path) => location.pathname === path;
@@ -69,27 +94,29 @@ export function Navbar() {
 
         <BNavbar.Collapse id="basic-navbar-nav">
           <Nav className="mx-auto gap-1">
-            {navLinks.map((link) => (
-              <Nav.Link
-                as={isHomePage ? 'a' : Link}
-                to={isHomePage ? undefined : link.href}
-                href={isHomePage ? link.href : undefined}
-                key={link.label}
-                active={!isHomePage && isActive(link.href)}
-                className={`px-3 py-2 fw-medium ${(!isHomePage && isActive(link.href)) ? "text-primary" : "text-secondary"
-                  } nav-link-hover`}
-                style={{ fontSize: '0.95rem' }}
-              >
-                {link.label}
-              </Nav.Link>
-            ))}
+            {navLinks.map((link) => {
+              const active = !isHomePage && isActive(link.href);
+
+              return (
+                <Nav.Link
+                  as={isHomePage ? 'a' : Link}
+                  to={isHomePage ? undefined : link.href}
+                  href={isHomePage ? link.href : undefined}
+                  key={link.label}
+                  className={`px-3 py-2 fw-medium nav-link-hover ${active ? "nav-active" : "text-secondary"}`}
+                  style={{ fontSize: '0.95rem' }}
+                >
+                  {link.label}
+                </Nav.Link>
+              );
+            })}
           </Nav>
 
           <div className="d-flex align-items-center gap-3 mt-3 mt-md-0">
 
-            {/* Cart Icon */}
-            {isAuthenticated && user?.role === 'client' && (
-              <Link to="/cart" className="position-relative text-secondary hover-primary">
+            {/* ✅ Cart icon client only */}
+            {isAuthenticated && role === 'client' && (
+              <Link to="/cart" className="position-relative text-secondary hover-primary" title="Cart" aria-label="Cart">
                 <ShoppingCart size={20} />
                 {itemCount > 0 && (
                   <span
@@ -108,32 +135,37 @@ export function Navbar() {
               </Link>
             )}
 
-            {/* Messages Icon */}
-{isAuthenticated && (
-  <Link
-    to="/messages"
-    className="position-relative text-secondary hover-primary"
-    style={{ display: "inline-flex", alignItems: "center" }}
-  >
-    <MessageSquare size={20} />
+            {/* ✅ Notification Bell (New) */}
+            {isAuthenticated && (
+              <NotificationBell />
+            )}
 
-    {Number(unreadCount) > 0 && (
-      <span
-        className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary"
-        style={{
-          fontSize: "0.65rem",
-          padding: "0.25em 0.4em",
-          minWidth: "1.2rem",
-          transform: "translate(-20%, -30%)",
-          zIndex: 2
-        }}
-      >
-        {unreadCount > 99 ? "99+" : unreadCount}
-      </span>
-    )}
-  </Link>
-)}
-
+            {/* ✅ Messages icon role-based */}
+            {isAuthenticated && (
+              <Link
+                to={activePaths.messages}
+                className="position-relative text-secondary hover-primary"
+                style={{ display: "inline-flex", alignItems: "center" }}
+                title="Messages"
+                aria-label="Messages"
+              >
+                <MessageSquare size={20} />
+                {Number(unreadCount) > 0 && (
+                  <span
+                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary"
+                    style={{
+                      fontSize: "0.65rem",
+                      padding: "0.25em 0.4em",
+                      minWidth: "1.2rem",
+                      transform: "translate(-20%, -30%)",
+                      zIndex: 2
+                    }}
+                  >
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </Link>
+            )}
 
             {isAuthenticated ? (
               <NavDropdown
@@ -149,22 +181,33 @@ export function Navbar() {
                 align="end"
                 className="user-dropdown"
               >
-                <NavDropdown.Item as={Link} to="/dashboard">Dashboard</NavDropdown.Item>
-                <NavDropdown.Item as={Link} to="/orders">Orders</NavDropdown.Item>
-                <NavDropdown.Item as={Link} to="/messages">Messages</NavDropdown.Item>
-                {user?.role === 'vendor' && (
-                  <NavDropdown.Item as={Link} to="/vendor/profile">Vendor Profile</NavDropdown.Item>
+                {/* ✅ Profile & Settings role-based */}
+                <NavDropdown.Item as={Link} to={activePaths.profile}>Profile</NavDropdown.Item>
+                <NavDropdown.Item as={Link} to={activePaths.settings}>Settings</NavDropdown.Item>
+
+                {/* ✅ Client-only menu */}
+                {role === 'client' && (
+                  <>
+                    <NavDropdown.Item as={Link} to={paths.client.paymentHistory}>Payment History</NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to={paths.client.saved}>Saved Services</NavDropdown.Item>
+                  </>
                 )}
+
+                <NavDropdown.Divider />
+
+                {/* ✅ Orders & Messages role-based */}
+                <NavDropdown.Item as={Link} to={activePaths.orders}>Orders</NavDropdown.Item>
+                <NavDropdown.Item as={Link} to={activePaths.messages}>Messages</NavDropdown.Item>
+
                 <NavDropdown.Divider />
                 <NavDropdown.Item onClick={logout} className="text-danger">Logout</NavDropdown.Item>
               </NavDropdown>
             ) : (
               <div className="d-flex align-items-center gap-3">
-                <Link
-                  to="/login"
-                  className="text-decoration-none fw-semibold text-secondary small"
-                >
-                  Log in
+                <Link to="/login">
+                  <Button variant="outline-secondary" size="sm" className="fw-semibold px-3">
+                    Log in
+                  </Button>
                 </Link>
                 <Link to="/signup">
                   <Button
@@ -184,14 +227,20 @@ export function Navbar() {
           </div>
         </BNavbar.Collapse>
       </Container>
+
       <style>{`
         .nav-link-hover {
           transition: all 0.2s ease;
-          border-radius: 6px;
+          border-radius: 10px;
         }
         .nav-link-hover:hover {
           background-color: #f8f9fa;
           color: #0A2540 !important;
+        }
+        .nav-active {
+          color: #0A2540 !important;
+          background: rgba(13,110,253,0.08);
+          box-shadow: inset 0 -2px 0 rgba(13,110,253,0.9);
         }
         .hover-primary:hover {
           color: #0A2540 !important;

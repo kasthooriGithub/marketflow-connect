@@ -35,7 +35,7 @@ export default function Settings() {
   };
 
   return (
-    <Layout>
+    <Layout footerVariant="dashboard">
       <Container className="py-5" style={{ maxWidth: '900px' }}>
         {/* Header */}
         <div className="mb-5">

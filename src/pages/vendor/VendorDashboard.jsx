@@ -1,138 +1,110 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from 'contexts/AuthContext';
 import { Layout } from 'components/layout/Layout';
 import { Button } from 'components/ui/button';
 import { AddServiceModal } from 'components/vendor/AddServiceModal';
+import { RecentActivity } from 'components/common/RecentActivity';
 import {
-    ShoppingBag,
-    MessageSquare,
-    Settings,
-    Plus,
-    Package,
-    TrendingUp,
-    Users,
-    DollarSign,
-    Briefcase,
-    FileText
+    ShoppingBag, MessageSquare, Settings, Plus, Package,
+    TrendingUp, Users, DollarSign, Briefcase,
+    ArrowUpRight, Clock, Percent, Wallet, ChevronRight,
+    CheckCircle, AlertCircle, Star
 } from 'lucide-react';
-import { Container, Row, Col, Card } from 'react-bootstrap';
+import { Container, Row, Col, Card, Badge, Table, Spinner } from 'react-bootstrap';
 import {
-    collection,
-    query,
-    where,
-    getCountFromServer,
-    getDocs,
-    orderBy,
-    limit
+    collection, query, where, getCountFromServer,
+    getDocs, doc, getDoc, orderBy, limit
 } from 'firebase/firestore';
 import { db } from 'lib/firebase';
-import { proposalService } from 'services/proposalService';
 
 export default function VendorDashboard() {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
-    const [stats, setStats] = useState([]);
-    const [recentActivity, setRecentActivity] = useState([]);
-    const [proposals, setProposals] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const [financials, setFinancials] = useState({
+        gross: 0,
+        net: 0,
+        adminFee: 0,
+        pending: 0
+    });
+
+    const [stats, setStats] = useState([]);
+    const [recentOrders, setRecentOrders] = useState([]);
+
+    // UPDATED: Platform Fee changed to 20%
+    const ADMIN_FEE_PERCENTAGE = 20;
+
     const quickLinks = [
-        { to: '/my-services', label: 'My Services', icon: Briefcase },
-        { to: '/orders', label: 'Orders', icon: ShoppingBag },
-        { to: '/messages', label: 'Messages', icon: MessageSquare },
-        { to: '/earnings', label: 'Earnings', icon: DollarSign },
-        { to: '/settings', label: 'Settings', icon: Settings },
-        { to: '/vendor/profile', label: 'My Profile', icon: Users },
+        { to: '/my-services', label: 'My Services', icon: Briefcase, color: '#4f46e5' },
+        { to: '/orders', label: 'Orders', icon: ShoppingBag, color: '#0ea5e9' },
+        { to: '/messages', label: 'Messages', icon: MessageSquare, color: '#10b981' },
+        { to: '/earnings', label: 'Earnings', icon: DollarSign, color: '#f59e0b' },
+        // NEW: Review Platform Button Added
+        { to: '/dashboard/review-platform', label: 'Review Platform', icon: Star, color: '#f43f5e' },
+        { to: '/settings', label: 'Settings', icon: Settings, color: '#6366f1' },
+        { to: '/vendor/profile', label: 'My Profile', icon: Users, color: '#ec4899' },
     ];
 
-    const iconColors = {
-        warning: 'warning',
-        primary: 'primary',
-        success: 'success'
-    };
-
-    const iconBgColors = {
-        warning: 'bg-warning bg-opacity-25',
-        primary: 'bg-primary bg-opacity-25',
-        success: 'bg-success bg-opacity-25'
-    };
-
     useEffect(() => {
-        const fetchDashboardData = async () => {
-            if (!user?.uid) return;
+        if (!user?.uid) return;
 
+        const fetchDashboardData = async () => {
             try {
                 setLoading(true);
-                const uid = user.uid;
 
-                // Vendor stats: Active Services, Total Orders, Revenue, Profile Views
-                const servicesQuery = query(
-                    collection(db, 'services'),
-                    where('vendor_id', '==', uid), // Fixed to camelCase
-                    where('is_active', '==', true)
-                );
-                const servicesSnapshot = await getCountFromServer(servicesQuery);
-                const activeServices = servicesSnapshot.data().count;
+                const ordersRef = collection(db, 'orders');
+                const q = query(ordersRef, where('vendor_id', '==', user.uid));
+                const querySnapshot = await getDocs(q);
 
-                const ordersQuery = query(
-                    collection(db, 'orders'),
-                    where('vendor_id', '==', uid) // Fixed to camelCase
-                );
-                const ordersSnapshot = await getCountFromServer(ordersQuery);
-                const totalOrders = ordersSnapshot.data().count;
+                let grossRevenue = 0;
+                let pendingRevenue = 0;
+                let allOrders = [];
 
-                // Calculate revenue
-                const revenueQuery = query(
-                    collection(db, 'orders'),
-                    where('vendor_id', '==', uid), // Fixed to camelCase
-                    where('status', '==', 'completed')
-                );
-                const revenueSnapshot = await getDocs(revenueQuery);
-                let revenue = 0;
-                revenueSnapshot.forEach(doc => {
-                    revenue += doc.data().total_amount || 0;
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const amount = Number(data.total_amount) || 0;
+
+                    if (data.status === 'completed') {
+                        grossRevenue += amount;
+                    } else if (data.status !== 'cancelled') {
+                        pendingRevenue += amount;
+                    }
+
+                    allOrders.push({ id: doc.id, ...data });
                 });
 
-                // Profile views (assuming vendorId for consistency, check db if possible but sticking to standard)
-                const viewsQuery = query(
-                    collection(db, 'profile_views'),
-                    where('vendor_id', '==', uid) // Fixed to camelCase
-                );
-                const viewsSnapshot = await getCountFromServer(viewsQuery);
-                const profileViews = viewsSnapshot.data().count;
+                const adminFee = (grossRevenue * ADMIN_FEE_PERCENTAGE) / 100;
+                const netEarnings = grossRevenue - adminFee;
+
+                setFinancials({
+                    gross: grossRevenue,
+                    net: netEarnings,
+                    adminFee: adminFee,
+                    pending: pendingRevenue
+                });
+
+                const servicesQ = query(collection(db, 'services'), where('vendor_id', '==', user.uid));
+                const servicesSnap = await getCountFromServer(servicesQ);
 
                 setStats([
-                    { label: 'Active Services', value: activeServices.toString(), icon: Package },
-                    { label: 'Total Orders', value: totalOrders.toString(), icon: ShoppingBag },
-                    { label: 'Revenue', value: `$${revenue.toLocaleString()}`, icon: DollarSign },
-                    { label: 'Profile Views', value: profileViews.toLocaleString(), icon: TrendingUp },
+                    { label: 'Net Earnings', value: `$${netEarnings.toLocaleString()}`, sub: 'After 20% fee', icon: Wallet, color: 'success' },
+                    { label: 'Pending Clear', value: `$${pendingRevenue.toLocaleString()}`, sub: 'Active orders', icon: Clock, color: 'warning' },
+                    { label: 'Active Services', value: servicesSnap.data().count.toString(), sub: 'Live listings', icon: Package, color: 'primary' },
+                    { label: 'Total Sales', value: allOrders.length.toString(), sub: 'Lifetime orders', icon: ShoppingBag, color: 'info' },
                 ]);
 
-                // Recent activity for vendor
-                const recentOrdersQuery = query(
-                    collection(db, 'orders'),
-                    where('vendor_id', '==', uid), // Fixed to camelCase
-                    orderBy('created_at', 'desc'),
-                    limit(3)
-                );
-                const recentOrdersSnapshot = await getDocs(recentOrdersQuery);
-                const activities = recentOrdersSnapshot.docs.map(doc => {
-                    const data = doc.data();
-                    return {
-                        id: doc.id,
-                        type: 'order',
-                        title: 'New order received',
-                        description: `${data.service_name || 'Service'} • ${formatTimeAgo(data.created_at)}`,
-                        icon: ShoppingBag,
-                        iconColor: 'warning'
-                    };
-                });
-                setRecentActivity(activities);
+                const sortedOrders = allOrders
+                    .sort((a, b) => (b.created_at?.seconds || 0) - (a.created_at?.seconds || 0))
+                    .slice(0, 5);
+
+                setRecentOrders(sortedOrders);
+                setLoading(false);
 
             } catch (error) {
-                console.error('Error fetching dashboard data:', error);
-            } finally {
+                console.error("Dashboard Fetch Error:", error);
                 setLoading(false);
             }
         };
@@ -140,132 +112,138 @@ export default function VendorDashboard() {
         fetchDashboardData();
     }, [user]);
 
-    // Subscribe to proposals
-    useEffect(() => {
-        if (!user?.uid) return;
-
-        const unsubscribe = proposalService.subscribeToVendorProposals(user.uid, (fetchedProposals) => {
-            setProposals(fetchedProposals);
-        });
-
-        return () => unsubscribe();
-    }, [user]);
-
-    const formatTimeAgo = (timestamp) => {
-        if (!timestamp) return 'Recently';
-
-        const now = new Date();
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 60) {
-            return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-        } else if (diffHours < 24) {
-            return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-        } else if (diffDays < 7) {
-            return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    const handleWithdraw = () => {
+        if (financials.net > 0) {
+            alert(`Payout request for $${financials.net.toLocaleString()} has been sent!`);
         } else {
-            return date.toLocaleDateString();
+            alert("No earnings available for withdrawal.");
         }
     };
 
     if (loading) {
         return (
-            <Layout>
-                <div className="py-5">
-                    <Container>
-                        <div className="text-center py-5">
-                            <div className="spinner-border text-primary" role="status">
-                                <span className="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                    </Container>
+            <Layout footerVariant="dashboard">
+                <div className="d-flex justify-content-center align-items-center min-vh-100">
+                    <Spinner animation="border" variant="primary" />
                 </div>
             </Layout>
         );
     }
 
     return (
-        <Layout>
-            <div className="py-5">
+        <Layout footerVariant="dashboard">
+            <div className="py-4 bg-light min-vh-100">
                 <Container>
-                    <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4">
+                    <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 gap-3">
                         <div>
-                            <h1 className="h3 fw-bold text-dark mb-2">
-                                Welcome back, {user?.full_name || user?.name}!
-                            </h1>
-                            <p className="text-secondary">
-                                Manage your services and track your performance
-                            </p>
+                            <h2 className="fw-bold text-dark mb-1">Welcome back, {user?.full_name || 'Vendor'}! 👋</h2>
+                            <p className="text-muted mb-0">Monitor your marketplace performance and earnings.</p>
                         </div>
-                        <Button variant="default" className="mt-3 mt-md-0 d-flex align-items-center" onClick={() => setIsAddServiceOpen(true)}>
-                            <Plus size={16} className="me-2" />
-                            Add New Service
+                        <Button onClick={() => setIsAddServiceOpen(true)} className="rounded-3 shadow-sm border-0 px-4 py-2 bg-primary">
+                            <Plus size={18} className="me-2" /> Add New Service
                         </Button>
                     </div>
 
-                    <Row className="mb-4 g-3">
-                        {stats.map((stat) => (
-                            <Col md={3} key={stat.label}>
-                                <Card className="h-100 border p-3">
-                                    <div className="d-flex align-items-center justify-content-between">
-                                        <div>
-                                            <p className="small text-muted mb-1">{stat.label}</p>
-                                            <p className="h4 fw-bold text-dark mb-0">{stat.value}</p>
+                    <Row className="g-3 mb-4">
+                        {stats.map((stat, i) => (
+                            <Col md={3} sm={6} key={i}>
+                                <Card className="border-0 shadow-sm rounded-4 h-100 transition-hover">
+                                    <Card.Body className="p-4">
+                                        <div className={`p-2 rounded-3 bg-${stat.color} bg-opacity-10 text-${stat.color} d-inline-block mb-3`}>
+                                            <stat.icon size={22} />
                                         </div>
-                                        <div className="p-3 rounded bg-primary bg-opacity-10 d-flex align-items-center justify-content-center">
-                                            <stat.icon size={24} className="text-primary" />
-                                        </div>
-                                    </div>
+                                        <p className="text-muted small fw-medium mb-1">{stat.label}</p>
+                                        <h3 className="fw-bold mb-1 text-dark">{stat.value}</h3>
+                                        <span className="tiny text-muted d-block">{stat.sub}</span>
+                                    </Card.Body>
                                 </Card>
                             </Col>
                         ))}
                     </Row>
 
                     <Row className="g-4">
-                        <Col md={6}>
-                            <Card className="h-100 border">
+                        <Col lg={8}>
+                            <Card className="border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+                                <Card.Header className="bg-white border-0 py-4 px-4 d-flex justify-content-between align-items-center">
+                                    <h5 className="fw-bold mb-0">Recent Activity</h5>
+                                    <Button variant="link" onClick={() => navigate('/vendor/orders')} className="text-decoration-none p-0 small text-primary">
+                                        View All Orders <ChevronRight size={14} />
+                                    </Button>
+                                </Card.Header>
                                 <Card.Body className="p-4">
-                                    <h2 className="h5 fw-bold mb-4">Recent Activity</h2>
-                                    {recentActivity.length > 0 ? (
-                                        <div className="d-flex flex-column gap-3">
-                                            {recentActivity.map((activity) => (
-                                                <div key={activity.id} className="d-flex align-items-center gap-3 p-3 rounded bg-light">
-                                                    <div className={`rounded-circle p-2 d-flex align-items-center justify-content-center ${iconBgColors[activity.iconColor]}`} style={{ width: 40, height: 40 }}>
-                                                        <activity.icon size={20} className={`text-${iconColors[activity.iconColor]}`} />
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        <p className="small fw-bold text-dark mb-0">{activity.title}</p>
-                                                        <p className="small text-muted mb-0">{activity.description}</p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-4">
-                                            <p className="text-muted mb-0">No recent activity</p>
-                                        </div>
-                                    )}
+                                    <RecentActivity limit={5} />
                                 </Card.Body>
+                            </Card>
+
+                            <Card className="border-0 shadow-sm rounded-4 p-4">
+                                <h5 className="fw-bold mb-4">Account Standing</h5>
+                                <Row className="text-center g-3">
+                                    <Col xs={4}>
+                                        <div className="p-3 bg-light rounded-4 border">
+                                            <div className="text-success mb-2"><CheckCircle size={24} /></div>
+                                            <h6 className="mb-1 fw-bold">99%</h6>
+                                            <p className="tiny text-muted mb-0">Success</p>
+                                        </div>
+                                    </Col>
+                                    <Col xs={4}>
+                                        <div className="p-3 bg-light rounded-4 border">
+                                            <div className="text-primary mb-2"><Star size={24} /></div>
+                                            <h6 className="mb-1 fw-bold">4.8/5</h6>
+                                            <p className="tiny text-muted mb-0">Rating</p>
+                                        </div>
+                                    </Col>
+                                    <Col xs={4}>
+                                        <div className="p-3 bg-light rounded-4 border">
+                                            <div className="text-warning mb-2"><AlertCircle size={24} /></div>
+                                            <h6 className="mb-1 fw-bold">1 hr</h6>
+                                            <p className="tiny text-muted mb-0">Response</p>
+                                        </div>
+                                    </Col>
+                                </Row>
                             </Card>
                         </Col>
 
-                        <Col md={6}>
-                            <Card className="h-100 border">
+                        <Col lg={4}>
+                            <Card className="border-0 bg-dark text-white rounded-4 shadow-sm mb-4">
                                 <Card.Body className="p-4">
-                                    <h2 className="h5 fw-bold mb-4">Quick Links</h2>
+                                    <div className="d-flex justify-content-between mb-4">
+                                        <div className="p-2 bg-white bg-opacity-10 rounded-3">
+                                            <Wallet size={24} />
+                                        </div>
+                                        <div className="text-end">
+                                            <div className="d-flex align-items-center text-info tiny fw-bold mb-1">
+                                                <Percent size={12} className="me-1" /> 20% Platform Fee
+                                            </div>
+                                            <p className="tiny text-white-50 mb-0">Net Balance</p>
+                                        </div>
+                                    </div>
+                                    <p className="small text-white-50 mb-1">Available for Payout</p>
+                                    <h2 className="fw-bold mb-4 text-white">${financials.net.toLocaleString()}</h2>
+                                    <Button
+                                        onClick={handleWithdraw}
+                                        variant="light"
+                                        className="w-100 rounded-3 py-2 fw-bold text-dark"
+                                        disabled={financials.net <= 0}
+                                    >
+                                        Withdraw Funds
+                                    </Button>
+                                    <p className="tiny text-center mt-3 text-white-50 mb-0">
+                                        Gross Revenue: ${financials.gross.toLocaleString()}
+                                    </p>
+                                </Card.Body>
+                            </Card>
+
+                            <Card className="border-0 shadow-sm rounded-4">
+                                <Card.Body className="p-4">
+                                    <h5 className="fw-bold mb-4 text-dark">Quick Actions</h5>
                                     <Row className="g-3">
                                         {quickLinks.map((link) => (
                                             <Col xs={6} key={link.to}>
-                                                <Link
-                                                    to={link.to}
-                                                    className="d-flex align-items-center gap-3 p-3 rounded bg-light text-decoration-none hover-bg-gray transition-colors h-100"
-                                                >
-                                                    <link.icon size={20} className="text-primary" />
-                                                    <span className="small fw-medium text-dark">{link.label}</span>
+                                                <Link to={link.to} className="quick-link-card text-decoration-none d-flex flex-column align-items-center p-3 rounded-4 justify-content-center text-center h-100 border bg-white">
+                                                    <div className="icon-box-small mb-2" style={{ backgroundColor: `${link.color}15`, color: link.color }}>
+                                                        <link.icon size={20} />
+                                                    </div>
+                                                    <span className="tiny fw-bold text-dark">{link.label}</span>
                                                 </Link>
                                             </Col>
                                         ))}
@@ -274,58 +252,21 @@ export default function VendorDashboard() {
                             </Card>
                         </Col>
                     </Row>
-
-                    {/* Proposals Section */}
-                    {proposals.length > 0 && (
-                        <Row className="mt-4">
-                            <Col>
-                                <Card className="border">
-                                    <Card.Body className="p-4">
-                                        <h2 className="h5 fw-bold mb-4">Sent Proposals ({proposals.length})</h2>
-                                        <div className="d-flex flex-column gap-3">
-                                            {proposals.map((proposal) => {
-                                                const statusColors = {
-                                                    pending: 'bg-warning text-dark',
-                                                    accepted: 'bg-success text-white',
-                                                    rejected: 'bg-danger text-white',
-                                                    changes_requested: 'bg-secondary text-white'
-                                                };
-                                                return (
-                                                    <div
-                                                        key={proposal.id}
-                                                        className="d-flex align-items-center justify-content-between p-3 rounded bg-light"
-                                                    >
-                                                        <div className="d-flex align-items-center gap-3">
-                                                            <div className="rounded-circle p-2 d-flex align-items-center justify-content-center bg-primary bg-opacity-10" style={{ width: 40, height: 40 }}>
-                                                                <FileText size={20} className="text-primary" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="small fw-bold text-dark mb-0">{proposal.title}</p>
-                                                                <p className="small text-muted mb-0">{proposal.service_name} • ${proposal.price} • {proposal.delivery_time}</p>
-                                                            </div>
-                                                        </div>
-                                                        <span className={`badge rounded-pill px-3 ${statusColors[proposal.status] || 'bg-secondary'}`}>
-                                                            {proposal.status.replace('_', ' ')}
-                                                        </span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </Card.Body>
-                                </Card>
-                            </Col>
-                        </Row>
-                    )}
                 </Container>
             </div>
 
-            <AddServiceModal
-                open={isAddServiceOpen}
-                onOpenChange={setIsAddServiceOpen}
-            />
+            <AddServiceModal open={isAddServiceOpen} onOpenChange={setIsAddServiceOpen} />
+
             <style>{`
-        .hover-bg-gray:hover { background-color: #e9ecef !important; }
-      `}</style>
+                .tiny { font-size: 0.72rem; }
+                .custom-table th { font-weight: 600; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.8px; padding-top: 15px; padding-bottom: 15px; }
+                .icon-box-small { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+                .quick-link-card { transition: all 0.2s ease; min-height: 90px; }
+                .quick-link-card:hover { border-color: #4f46e5 !important; transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+                .transition-hover { transition: all 0.3s ease; }
+                .transition-hover:hover { transform: translateY(-5px); }
+                .custom-table tbody tr:hover { background-color: #f8f9fa; }
+            `}</style>
         </Layout>
     );
 }

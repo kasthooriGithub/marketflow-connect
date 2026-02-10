@@ -185,6 +185,8 @@ export function MessagingProvider({ children }) {
         text: m.text,
         createdAt: m.created_at?.toDate ? m.created_at.toDate() : new Date(),
         read: m.read,
+        type: m.type || null,
+        proposal_id: m.proposal_id || null,
       }));
       setMessages(mapped);
     });
@@ -192,9 +194,9 @@ export function MessagingProvider({ children }) {
     return () => unsubscribe && unsubscribe();
   }, [activeConversation?.id]);
 
-  const sendMessage = async (text) => {
+  const sendMessage = async (text, metadata = {}) => {
     if (!activeConversation?.id || !authUid || !text.trim()) return;
-    await chatService.sendMessage(activeConversation.id, authUid, text.trim());
+    await chatService.sendMessage(activeConversation.id, authUid, text.trim(), metadata);
   };
 
   return (
@@ -208,6 +210,7 @@ export function MessagingProvider({ children }) {
         unreadCount,
         unreadByConversation, // ✅ NEW (Sidebar badge uses this)
         markConversationAsRead,
+        chatService, // ✅ Exposing for direct access
       }}
     >
       {children}

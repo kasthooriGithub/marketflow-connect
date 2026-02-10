@@ -1,399 +1,232 @@
-import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import {
-  MapPin,
-  Calendar,
-  Clock,
-  Star,
-  CheckCircle,
-  MessageSquare,
-  ArrowLeft,
-  ExternalLink,
-  Briefcase
-} from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { MapPin, Star, ShieldCheck, ArrowLeft, Award, Briefcase, MessageSquare, Eye, Globe, Calendar, ExternalLink } from 'lucide-react';
 import { Layout } from 'components/layout/Layout';
 import { Button } from 'components/ui/button';
 import { Badge } from 'components/ui/badge';
-import { ServiceCard } from 'components/common/ServiceCard';
-import { getVendorById } from 'data/vendors';
-import { services } from 'data/services';
+import { Container, Row, Col, Card, Spinner, Tab, Nav } from 'react-bootstrap';
+import { db } from 'lib/firebase';
+import { doc, getDoc, updateDoc, increment, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore'; 
 import { useAuth } from 'contexts/AuthContext';
 import { useMessaging } from 'contexts/MessagingContext';
 import { toast } from 'sonner';
-import { Container, Row, Col, Card, Tab, Nav } from 'react-bootstrap';
-
-function PortfolioSection({ vendor }) {
-  return (
-    <Row xs={1} md={2} className="g-4">
-      {vendor.portfolio.map((item) => (
-        <Col key={item.id}>
-          <Card className="h-100 overflow-hidden border shadow-sm group">
-            <div className="ratio ratio-16x9 bg-light position-relative">
-              <img
-                src={item.image}
-                alt={item.title}
-                className="object-fit-cover w-100 h-100"
-              />
-              <div className="position-absolute top-50 start-50 translate-middle opacity-0 hover-opacity-100 transition-opacity bg-dark bg-opacity-50 p-2 rounded">
-                <Button size="sm" variant="secondary">
-                  <ExternalLink size={16} className="me-2" />
-                  View Project
-                </Button>
-              </div>
-            </div>
-            <Card.Body>
-              <Badge variant="secondary" className="mb-2">{item.category}</Badge>
-              <Card.Title className="h6 fw-bold mb-1">{item.title}</Card.Title>
-              <Card.Text className="small text-muted">{item.description}</Card.Text>
-            </Card.Body>
-          </Card>
-        </Col>
-      ))}
-
-      {vendor.portfolio.length === 0 && (
-        <Col xs={12}>
-          <div className="text-center py-5 bg-light rounded border border-dashed">
-            <Briefcase size={48} className="text-muted mb-3" />
-            <h3 className="h6 fw-bold text-dark mb-2">No portfolio items yet</h3>
-            <p className="text-secondary small">
-              This vendor hasn't added portfolio items yet
-            </p>
-          </div>
-        </Col>
-      )}
-      <style>{`
-        .group:hover .hover-opacity-100 { opacity: 1 !important; }
-      `}</style>
-    </Row>
-  );
-}
-
-function ReviewsSection({ vendor }) {
-  const ratingDistribution = [5, 4, 3, 2, 1].map(rating => ({
-    rating,
-    count: vendor.reviews.filter(r => Math.floor(r.rating) === rating).length,
-    percentage: vendor.reviews.length > 0
-      ? (vendor.reviews.filter(r => Math.floor(r.rating) === rating).length / vendor.reviews.length) * 100
-      : 0
-  }));
-
-  return (
-    <div className="d-flex flex-column gap-4">
-      <Card className="border">
-        <Card.Body className="p-4">
-          <div className="d-flex flex-column flex-md-row gap-4">
-            <div className="text-center text-md-start">
-              <div className="display-4 fw-bold">{vendor.rating}</div>
-              <div className="d-flex justify-content-center justify-content-md-start gap-1 mt-2 text-warning">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    size={20}
-                    className={i < Math.floor(vendor.rating) ? 'fill-warning' : 'text-muted'}
-                  />
-                ))}
-              </div>
-              <p className="small text-muted mt-1">{vendor.reviewCount} reviews</p>
-            </div>
-
-            <div className="flex-grow-1 d-flex flex-column gap-2">
-              {ratingDistribution.map(({ rating, count, percentage }) => (
-                <div key={rating} className="d-flex align-items-center gap-3">
-                  <span className="small text-muted" style={{ width: 24 }}>{rating}</span>
-                  <Star size={16} className="text-warning fill-warning" />
-                  <div className="flex-grow-1 bg-light rounded-pill" style={{ height: 8 }}>
-                    <div
-                      className="bg-warning rounded-pill h-100"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                  <span className="small text-muted" style={{ width: 30 }}>{count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card.Body>
-      </Card>
-
-      <div className="d-flex flex-column gap-3">
-        {vendor.reviews.map((review) => (
-          <Card key={review.id} className="border">
-            <Card.Body className="p-4">
-              <div className="d-flex justify-content-between align-items-start mb-3">
-                <div className="d-flex align-items-center gap-3">
-                  <div className="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style={{ width: 40, height: 40 }}>
-                    <span className="text-primary fw-bold">
-                      {review.clientName.charAt(0)}
-                    </span>
-                  </div>
-                  <div>
-                    <h6 className="fw-bold mb-0">{review.clientName}</h6>
-                    <p className="small text-muted mb-0">{review.serviceName}</p>
-                  </div>
-                </div>
-                <div className="d-flex gap-1 text-warning">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      size={16}
-                      className={i < review.rating ? 'fill-warning' : 'text-muted'}
-                    />
-                  ))}
-                </div>
-              </div>
-              <p className="text-secondary mb-2">{review.comment}</p>
-              <p className="small text-muted mb-0">
-                {new Date(review.date).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-            </Card.Body>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ServicesSection({ vendorId }) {
-  const vendorServices = services.filter(s => s.vendorId === vendorId);
-
-  return (
-    <div className="d-flex flex-column gap-4">
-      {vendorServices.length > 0 ? (
-        <Row xs={1} md={2} className="g-4">
-          {vendorServices.map((service) => (
-            <Col key={service.id}>
-              <ServiceCard service={service} />
-            </Col>
-          ))}
-        </Row>
-      ) : (
-        <div className="text-center py-5 bg-light rounded border border-dashed">
-          <Briefcase size={48} className="text-muted mb-3" />
-          <h3 className="h6 fw-bold text-dark mb-2">No services listed</h3>
-          <p className="text-secondary small">
-            This vendor hasn't listed any services yet
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function PublicVendorProfile() {
-  const { vendorId } = useParams();
-  const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
-  const { startConversation, setActiveConversation } = useMessaging();
-  const [activeTab, setActiveTab] = useState('portfolio');
+    const { vendorId } = useParams();
+    const navigate = useNavigate();
+    const { user, isAuthenticated } = useAuth();
+    const { startConversation } = useMessaging();
+    
+    const [vendor, setVendor] = useState(null);
+    const [portfolioItems, setPortfolioItems] = useState([]); // Portfolio டேட்டாவிற்கான State
+    const [loading, setLoading] = useState(true);
+    const [portfolioLoading, setPortfolioLoading] = useState(false);
+    const [contacting, setContacting] = useState(false);
+    const hasIncremented = useRef(false);
 
-  const vendor = vendorId ? getVendorById(vendorId) : null;
+    // 1. Vendor தகவல்களை எடுத்தல்
+    useEffect(() => {
+        const fetchAndTrackVendor = async () => {
+            if (!vendorId) return;
+            try {
+                setLoading(true);
+                const docRef = doc(db, 'vendors', vendorId);
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    const vendorData = docSnap.data();
+                    setVendor({ id: docSnap.id, ...vendorData });
 
-  if (!vendor) {
+                    if (!hasIncremented.current) {
+                        await updateDoc(docRef, {
+                            profile_views: increment(1),
+                            last_viewed_at: serverTimestamp()
+                        });
+                        hasIncremented.current = true;
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching vendor:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchAndTrackVendor();
+    }, [vendorId]);
+
+    // 2. Portfolio தகவல்களை Firestore-ல் இருந்து எடுத்தல்
+    const fetchPortfolio = async () => {
+        // ஒருமுறை டேட்டா எடுத்திருந்தால் மீண்டும் எடுக்கத் தேவையில்லை
+        if (portfolioItems.length > 0) return;
+
+        try {
+            setPortfolioLoading(true);
+            const portfolioRef = collection(db, 'portfolio');
+            // vendor_id மேட்ச் ஆகும் போர்ட்ஃபோலியோக்களை மட்டும் எடுக்கிறது
+            const q = query(portfolioRef, where('vendor_id', '==', vendorId));
+            const querySnapshot = await getDocs(q);
+            
+            const items = querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setPortfolioItems(items);
+        } catch (err) {
+            console.error("Portfolio Error:", err);
+            toast.error("Failed to load portfolio");
+        } finally {
+            setPortfolioLoading(false);
+        }
+    };
+
+    // 3. Contact Vendor செயல்பாடு
+    const handleContactVendor = async () => {
+        if (!isAuthenticated) {
+            toast.error("Please login to contact this vendor");
+            navigate('/login');
+            return;
+        }
+
+        if (user?.uid === vendorId) {
+            toast.error("You cannot message yourself");
+            return;
+        }
+
+        setContacting(true);
+        try {
+            const conversationId = await startConversation(vendor.id, {
+                name: vendor.vendor_name || vendor.agency_name,
+                photoURL: vendor.profile_image || ''
+            });
+            
+            if (conversationId) {
+                navigate(`/messages/${conversationId}`);
+            }
+        } catch (error) {
+            console.error("Contact Error:", error);
+            toast.error("Could not start conversation");
+        } finally {
+            setContacting(false);
+        }
+    };
+
+    if (loading) return <div className="text-center py-5 mt-5"><Spinner animation="border" variant="primary" /></div>;
+    if (!vendor) return <Layout><Container className="text-center py-5"><h4>Vendor Not Found</h4></Container></Layout>;
+
     return (
-      <Layout>
-        <Container className="py-5 text-center">
-          <h1 className="h3 fw-bold mb-4">Vendor not found</h1>
-          <Button onClick={() => navigate('/services')}>Browse Services</Button>
-        </Container>
-      </Layout>
+        <Layout>
+            <div className="bg-light min-vh-100 pb-5">
+                <div className="bg-primary shadow-sm" style={{ height: '180px', background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)' }}>
+                    <Container className="h-100 position-relative">
+                        <Button variant="light" size="sm" className="position-absolute top-0 start-0 m-4 rounded-pill shadow-sm fw-medium" onClick={() => navigate(-1)}>
+                            <ArrowLeft size={16} className="me-1" /> Back
+                        </Button>
+                    </Container>
+                </div>
+
+                <Container>
+                    <Row className="gx-4">
+                        {/* Sidebar */}
+                        <Col lg={4} className="mt-n5">
+                            <Card className="border-0 shadow-sm p-4 text-center mb-4" style={{ borderRadius: '1.2rem', marginTop: '-60px' }}>
+                                <div className="mx-auto bg-white p-1 rounded-circle shadow-sm mb-3" style={{ width: '120px', height: '120px' }}>
+                                    {vendor.profile_image ? (
+                                        <img src={vendor.profile_image} alt="profile" className="w-100 h-100 rounded-circle object-fit-cover" />
+                                    ) : (
+                                        <div className="w-100 h-100 rounded-circle bg-primary d-flex align-items-center justify-content-center text-white display-5 fw-bold">
+                                            {(vendor.vendor_name || vendor.agency_name || 'V').charAt(0)}
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <h4 className="fw-bold mb-1">{vendor.vendor_name || vendor.agency_name} <ShieldCheck className="text-primary ms-1 d-inline" size={20} /></h4>
+                                
+                                <div className="d-flex justify-content-center gap-2 mb-4">
+                                    <Badge bg="light" className="text-dark border fw-normal rounded-pill px-3 py-2"><Eye size={14} className="me-1 text-primary" /> {vendor.profile_views || 0} Views</Badge>
+                                    <Badge bg="light" className="text-dark border fw-normal rounded-pill px-3 py-2"><Star size={14} className="me-1 text-warning" /> {vendor.rating || '5.0'}</Badge>
+                                </div>
+
+                                <div className="d-grid gap-2 mb-4">
+                                    <Button className="rounded-3 py-2 fw-bold shadow-sm" onClick={handleContactVendor} disabled={contacting}>
+                                        {contacting ? <Spinner size="sm" /> : <MessageSquare size={18} className="me-2" />} 
+                                        Contact Vendor
+                                    </Button>
+                                </div>
+
+                                <div className="text-start border-top pt-4 mt-2">
+                                    <h6 className="fw-bold small text-uppercase text-muted mb-3">Professional Info</h6>
+                                    <div className="d-flex align-items-center mb-3">
+                                        <MapPin size={18} className="text-primary me-3" />
+                                        <div>
+                                            <div className="small text-muted">Location</div>
+                                            <div className="fw-medium">{vendor.location || 'Not Specified'}</div>
+                                        </div>
+                                    </div>
+                                    <div className="d-flex align-items-center mb-3">
+                                        <Calendar size={18} className="text-primary me-3" />
+                                        <div>
+                                            <div className="small text-muted">Member Since</div>
+                                            <div className="fw-medium">Jan 2026</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+                        </Col>
+
+                        {/* Main Content */}
+                        <Col lg={8} className="mt-4">
+                            <Tab.Container defaultActiveKey="about">
+                                <Nav variant="pills" className="bg-white p-2 rounded-3 shadow-sm mb-4 border">
+                                    <Nav.Item className="flex-fill text-center">
+                                        <Nav.Link eventKey="about" className="rounded-3 py-2 fw-medium">About Profile</Nav.Link>
+                                    </Nav.Item>
+                                    <Nav.Item className="flex-fill text-center">
+                                        <Nav.Link eventKey="portfolio" onClick={fetchPortfolio} className="rounded-3 py-2 fw-medium">Work Portfolio</Nav.Link>
+                                    </Nav.Item>
+                                </Nav>
+
+                                <Tab.Content>
+                                    <Tab.Pane eventKey="about">
+                                        <Card className="border-0 shadow-sm p-4 rounded-4 mb-4">
+                                            <h5 className="fw-bold mb-3 d-flex align-items-center"><Award className="text-primary me-2" size={22} /> Professional Bio</h5>
+                                            <p className="text-secondary" style={{ lineHeight: '1.8' }}>{vendor.bio || "No bio available."}</p>
+                                        </Card>
+                                    </Tab.Pane>
+
+                                    <Tab.Pane eventKey="portfolio">
+                                        {portfolioLoading ? (
+                                            <div className="text-center py-5"><Spinner animation="border" size="sm" color="primary" /></div>
+                                        ) : portfolioItems.length > 0 ? (
+                                            <Row className="g-3">
+                                                {portfolioItems.map((item) => (
+                                                    <Col md={6} key={item.id}>
+                                                        <Card className="border-0 shadow-sm h-100 overflow-hidden rounded-4">
+                                                            <div className="position-relative">
+                                                                <img src={item.image_url} className="w-100" style={{ height: '200px', objectFit: 'cover' }} alt={item.title} />
+                                                                <Badge bg="dark" className="position-absolute top-0 end-0 m-2 bg-opacity-75">{item.category}</Badge>
+                                                            </div>
+                                                            <Card.Body>
+                                                                <h6 className="fw-bold mb-1">{item.title}</h6>
+                                                                <p className="small text-muted mb-0 text-truncate-2">{item.description}</p>
+                                                            </Card.Body>
+                                                        </Card>
+                                                    </Col>
+                                                ))}
+                                            </Row>
+                                        ) : (
+                                            <Card className="border-0 shadow-sm p-5 text-center rounded-4">
+                                                <Briefcase size={40} className="text-muted mb-3 mx-auto" />
+                                                <h6>No Portfolio Items Yet</h6>
+                                                <p className="text-muted small">This vendor hasn't uploaded any past work samples yet.</p>
+                                            </Card>
+                                        )}
+                                    </Tab.Pane>
+                                </Tab.Content>
+                            </Tab.Container>
+                        </Col>
+                    </Row>
+                </Container>
+            </div>
+        </Layout>
     );
-  }
-
-  const handleContactVendor = async () => {
-    if (!isAuthenticated) {
-      toast.error('Please log in to message vendors');
-      navigate('/login');
-      return;
-    }
-
-    const vendorServices = services.filter(s => s.vendorId === vendor.id);
-    const serviceName = vendorServices.length > 0 ? vendorServices[0].title : 'General Inquiry';
-    const serviceId = vendorServices.length > 0 ? vendorServices[0].id : 'general';
-
-    try {
-      const conversation = await startConversation(
-        vendor.id,
-        vendor.name,
-        serviceId,
-        serviceName
-      );
-
-      if (conversation) {
-        setActiveConversation(conversation);
-        navigate('/messages');
-        toast.success(`Started conversation with ${vendor.name}`);
-      }
-    } catch (error) {
-      console.error("Failed to start conversation", error);
-      toast.error("Could not start conversation");
-    }
-  };
-
-  const vendorServices = services.filter(s => s.vendorId === vendor.id);
-
-  return (
-    <Layout>
-      <div className="min-vh-100 bg-white pb-5">
-        <div className="bg-primary position-relative" style={{ height: 250 }}>
-          <div className="bg-gradient-to-r from-primary via-primary/80 to-accent w-100 h-100"></div>
-          <Button
-            variant="light"
-            size="sm"
-            className="position-absolute top-0 start-0 m-4 text-primary"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft size={16} className="me-2" />
-            Back
-          </Button>
-        </div>
-
-        <Container>
-          <div className="position-relative" style={{ marginTop: -80, marginBottom: 40 }}>
-            <div className="d-flex flex-column flex-md-row gap-4">
-              <div className="position-relative">
-                <div className="rounded-4 bg-white p-1 shadow-lg d-inline-block">
-                  <div className="rounded-4 bg-light d-flex align-items-center justify-content-center overflow-hidden" style={{ width: 128, height: 128 }}>
-                    {vendor.avatar ? (
-                      <img src={vendor.avatar} alt={vendor.name} className="w-100 h-100 object-fit-cover" />
-                    ) : (
-                      <span className="display-4 fw-bold text-primary">
-                        {vendor.name.charAt(0)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-grow-1 pt-3">
-                <div className="d-flex flex-column flex-md-row justify-content-between gap-3">
-                  <div>
-                    <h1 className="h2 fw-bold text-dark mb-1">{vendor.name}</h1>
-                    <p className="text-secondary mb-2">{vendor.tagline}</p>
-
-                    <div className="d-flex flex-wrap gap-3 small text-muted">
-                      <span className="d-flex align-items-center gap-1">
-                        <MapPin size={16} /> {vendor.location}
-                      </span>
-                      <span className="d-flex align-items-center gap-1">
-                        <Calendar size={16} /> Member since {vendor.memberSince}
-                      </span>
-                      <span className="d-flex align-items-center gap-1">
-                        <Clock size={16} /> Responds {vendor.responseTime}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="d-flex gap-2">
-                    <Button variant="outline" onClick={handleContactVendor}>
-                      <MessageSquare size={16} className="me-2" />
-                      Message
-                    </Button>
-                    {vendorServices.length > 0 && (
-                      <Link to={`/services/${vendorServices[0].id}`}>
-                        <Button variant="default">View Services</Button>
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <Row className="g-3 mb-5">
-            {[
-              { label: 'reviews', value: vendor.reviewCount, icon: Star, color: 'text-warning' },
-              { label: 'Completed projects', value: vendor.totalProjects },
-              { label: 'Completion rate', value: `${vendor.completionRate}%`, icon: CheckCircle, color: 'text-success' },
-              { label: 'Starting price', value: `$${vendor.startingPrice}` }
-            ].map((stat, idx) => (
-              <Col xs={6} md={3} key={idx}>
-                <Card className="text-center h-100 shadow-sm border">
-                  <Card.Body className="p-3">
-                    <div className="d-flex justify-content-center align-items-center gap-1 mb-1">
-                      {stat.icon && <stat.icon size={20} className={stat.color} />}
-                      <span className="h4 fw-bold text-dark mb-0">{stat.value}</span>
-                    </div>
-                    <p className="small text-muted mb-0">{stat.label}</p>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-
-          <Row className="g-4 mb-5">
-            <Col md={8}>
-              <Card className="h-100 shadow-sm border">
-                <Card.Body className="p-4">
-                  <h2 className="h5 fw-bold mb-3">About</h2>
-                  <p className="text-secondary">{vendor.description}</p>
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={4}>
-              <Card className="h-100 shadow-sm border">
-                <Card.Body className="p-4 relative">
-                  <h2 className="h5 fw-bold mb-3">Skills</h2>
-                  <div className="d-flex flex-wrap gap-2">
-                    {vendor.skills.map((skill) => (
-                      <Badge key={skill} variant="secondary">
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-
-          <div className="mb-5 bg-primary bg-opacity-10 rounded p-4 border border-primary border-opacity-25">
-            <div className="d-flex align-items-start gap-4">
-              <div className="d-flex align-items-center justify-content-center flex-shrink-0 bg-primary bg-opacity-10 rounded-circle" style={{ width: 48, height: 48 }}>
-                <MessageSquare size={24} className="text-primary" />
-              </div>
-              <div>
-                <h3 className="h6 fw-bold mb-1">Message Before You Pay</h3>
-                <p className="small text-secondary mb-2">
-                  Discuss your project requirements, clarify scope, and get to know {vendor.name} before committing.
-                  Only proceed to checkout when you're confident about the engagement.
-                </p>
-                <Button variant="link" className="p-0 text-decoration-none" onClick={handleContactVendor}>
-                  Start a conversation →
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'portfolio')}>
-            <Nav variant="tabs" className="mb-4">
-              <Nav.Item>
-                <Nav.Link eventKey="portfolio" className="px-4 py-3">Portfolio ({vendor.portfolio.length})</Nav.Link>
-              </Nav.Item>
-              <Nav.Item>
-                <Nav.Link eventKey="services" className="px-4 py-3">Services ({vendorServices.length})</Nav.Link>
-              </Nav.Item>
-              <Nav.Item>
-                <Nav.Link eventKey="reviews" className="px-4 py-3">Reviews ({vendor.reviewCount})</Nav.Link>
-              </Nav.Item>
-            </Nav>
-
-            <Tab.Content>
-              <Tab.Pane eventKey="portfolio">
-                <PortfolioSection vendor={vendor} />
-              </Tab.Pane>
-              <Tab.Pane eventKey="services">
-                <ServicesSection vendorId={vendor.id} />
-              </Tab.Pane>
-              <Tab.Pane eventKey="reviews">
-                <ReviewsSection vendor={vendor} />
-              </Tab.Pane>
-            </Tab.Content>
-          </Tab.Container>
-        </Container>
-      </div>
-    </Layout>
-  );
 }

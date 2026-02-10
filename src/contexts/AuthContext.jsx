@@ -11,12 +11,12 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Auth State Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
           const userProfile = await userService.getUserProfile(firebaseUser.uid);
-
           if (userProfile) {
             setUser({
               ...userProfile,
@@ -24,11 +24,10 @@ export function AuthProvider({ children }) {
               avatar: userProfile.photo_url
             });
           } else {
-            console.warn('User authenticated but no profile found in Firestore.');
             setUser(null);
           }
         } catch (error) {
-          console.error('Error fetching user profile:', error);
+          console.error('Error fetching profile:', error);
           setUser(null);
         }
       } else {
@@ -40,22 +39,16 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
+  // Standard Login (User/Vendor/Client)
   const login = async (email, password) => {
     try {
-      const { user: firebaseUser } =
-        await signInWithEmailAndPassword(auth, email, password);
-
-      // 🔥 Fetch Firestore profile immediately
+      const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password);
       const userProfile = await userService.getUserProfile(firebaseUser.uid);
 
       if (!userProfile) {
-        return {
-          success: false,
-          error: "User profile not found in database",
-        };
+        return { success: false, error: "User profile not found in database" };
       }
 
-      // 🔥 Set user immediately (NO second login issue)
       setUser({
         ...userProfile,
         name: userProfile.full_name,
@@ -68,15 +61,34 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // 🔥 UPDATED Admin Login Logic
   const adminLogin = async (email, password) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      return { success: true };
+      // 1. Firebase Auth login
+      const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password);
+      
+      // 2. Firestore-il irunthu profile-ai check seiyavum
+      const userProfile = await userService.getUserProfile(firebaseUser.uid);
+
+      // 3. Role 'admin' thaana endru verify seiyavum
+      if (userProfile && userProfile.role === 'admin') {
+        setUser({
+          ...userProfile,
+          name: userProfile.full_name,
+          avatar: userProfile.photo_url,
+        });
+        return { success: true };
+      } else {
+        // Role admin illaiyendraal logout seithu error message anuppavum
+        await signOut(auth);
+        return { success: false, error: "Access Denied: You do not have administrator privileges." };
+      }
     } catch (error) {
       return { success: false, error: error.message };
     }
   };
 
+  // Signup Logic
   const signup = async (email, password, name, role) => {
     try {
       const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, email, password);
@@ -89,13 +101,9 @@ export function AuthProvider({ children }) {
       });
 
       if (role === 'vendor') {
-        await vendorService.createVendorProfile(firebaseUser.uid, {
-          agency_name: name,
-        });
+        await vendorService.createVendorProfile(firebaseUser.uid, { agency_name: name });
       } else if (role === 'client') {
-        await clientService.createClientProfile(firebaseUser.uid, {
-          display_name: name,
-        });
+        await clientService.createClientProfile(firebaseUser.uid, { display_name: name });
       }
 
       return { success: true };

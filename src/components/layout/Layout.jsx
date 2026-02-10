@@ -1,10 +1,12 @@
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
+import MarketingFooter from './MarketingFooter';
 
 export function Layout({
   children,
   showFooter = true,
   showNavbar = true,
+  footerVariant = 'marketing', // 'marketing' (white) or 'dashboard' (dark)
 }) {
   return (
     <div className="d-flex flex-column min-vh-100">
@@ -17,7 +19,9 @@ export function Layout({
         {children}
       </main>
 
-      {showFooter && <Footer />}
+      {showFooter && (
+        footerVariant === 'dashboard' ? <Footer /> : <MarketingFooter />
+      )}
     </div>
   );
 }

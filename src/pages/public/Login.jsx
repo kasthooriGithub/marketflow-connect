@@ -30,7 +30,7 @@ export default function Login() {
     } else {
       toast({
         title: 'Login failed',
-        description: result.message || 'Please try again.',
+        description: result.error || 'Please try again.',
         variant: 'destructive',
       });
     }
@@ -43,7 +43,7 @@ export default function Login() {
     <div className="d-flex vh-100 overflow-hidden">
       {/* Left side - Form (scroll inside only if needed) */}
       <div className="flex-grow-1 h-100 overflow-auto p-4 d-flex align-items-center justify-content-center" style={{ minHeight: 0 }}>
-  <div className="w-100" style={{ maxWidth: '400px' }}>
+        <div className="w-100" style={{ maxWidth: '400px' }}>
 
           <Link to="/" className="d-flex align-items-center gap-2 mb-4 text-decoration-none">
             <div

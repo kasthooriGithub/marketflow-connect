@@ -40,13 +40,15 @@ export default function CategoryGrid() {
     }
 
     return (
-        <section id="categories" className="section-padding" style={{ background: '#FAFAFA' }}>
-            <Container>
+        <section id="categories" className="py-5" style={{ background: '#FAFAFA' }}>
+            <Container className="py-4">
                 <div className="text-center mb-5">
-                    <h2 className="fw-bold mb-3" style={{ color: '#404145', fontSize: '2.5rem' }}>
-                        Explore by Category
+                    <h2 className="fw-bold mb-3" style={{ color: '#404145', fontSize: '2.5rem', letterSpacing: '-0.02em' }}>
+                        Browse by category
                     </h2>
-                    <p className="text-muted fs-5">Find the perfect service for your needs</p>
+                    <p className="text-muted fs-5 mx-auto" style={{ maxWidth: '600px' }}>
+                        Find specialized experts for every marketing need
+                    </p>
                 </div>
 
                 <Row className="g-4">
@@ -54,39 +56,44 @@ export default function CategoryGrid() {
                         <Col xs={6} md={4} lg={3} key={category.id}>
                             <Link
                                 to={`/category/${category.id}`}
-                                className="text-decoration-none d-block"
+                                className="text-decoration-none d-block h-100"
                             >
                                 <div
-                                    className="card h-100 text-center p-4 border-0"
+                                    className="card h-100 text-center p-4 border-0 shadow-sm"
                                     style={{
-                                        borderRadius: '12px',
-                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        borderRadius: '16px',
+                                        transition: 'all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)',
                                         cursor: 'pointer',
-                                        background: 'white'
+                                        background: 'white',
+                                        border: '1px solid transparent'
                                     }}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(-8px)';
-                                        e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.1)';
+                                        e.currentTarget.style.transform = 'translateY(-10px)';
+                                        e.currentTarget.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.08)';
+                                        e.currentTarget.style.borderColor = '#00B67A';
                                     }}
                                     onMouseLeave={(e) => {
                                         e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.04)';
+                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.04)';
+                                        e.currentTarget.style.borderColor = 'transparent';
                                     }}
                                 >
                                     <div
-                                        className="d-inline-flex align-items-center justify-content-center rounded-3 mb-3 mx-auto"
+                                        className="d-inline-flex align-items-center justify-content-center rounded-4 mb-3 mx-auto"
                                         style={{
-                                            width: 72,
-                                            height: 72,
-                                            backgroundColor: category.bgColor || '#F8F9FA',
-                                            transition: 'transform 0.3s ease'
+                                            width: 80,
+                                            height: 80,
+                                            backgroundColor: category.bgColor || '#F0F2F5',
+                                            transition: 'transform 0.3s ease',
+                                            fontSize: '2.25rem'
                                         }}
                                     >
-                                        <span style={{ fontSize: '2rem' }}>{category.icon}</span>
+                                        <span role="img" aria-label={category.name}>{category.icon}</span>
                                     </div>
-                                    <h5 className="fw-bold mb-0" style={{ fontSize: '1.05rem', color: '#404145' }}>
+                                    <h5 className="fw-bold mb-1" style={{ fontSize: '1.1rem', color: '#404145' }}>
                                         {category.name}
                                     </h5>
+                                    <p className="small text-muted mb-0">Explore experts</p>
                                 </div>
                             </Link>
                         </Col>

@@ -1,22 +1,66 @@
+import { useState } from 'react';
 import { Layout } from 'components/layout/Layout';
 import { useCart } from 'contexts/CartContext';
 import { Button } from 'components/ui/button';
 import { Minus, Plus, Trash2, ShoppingCart } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from 'contexts/AuthContext';
-import { Container, Card, Row, Col } from 'react-bootstrap';
+import { Container, Card, Row, Col, Spinner } from 'react-bootstrap';
+import { orderService } from 'services/orderService';
+import { toast } from 'sonner';
+
 
 export default function Cart() {
   const { items, removeFromCart, updateQuantity, getTotal, clearCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!isAuthenticated) {
-      navigate('/login', { state: { from: { pathname: '/checkout' } } });
+      navigate('/login', { state: { from: { pathname: '/cart' } } });
       return;
     }
-    navigate('/checkout');
+
+    if (items.length === 0) return;
+
+    setIsProcessing(true);
+    try {
+      // 1. Create orders for all items in cart
+      const orderPromises = items.map(async item => {
+        const orderData = {
+          client_id: user.uid,
+          vendor_id: item.service.vendor_id || item.service.vendorId,
+          service_id: item.service.id,
+          service_name: item.service.title,
+          total_amount: (item.paymentType === 'subscription' && item.subscriptionPeriod === 'yearly'
+            ? item.service.price * 12 * 0.8
+            : item.service.price) * item.quantity,
+          status: 'pending_payment',
+          payment_status: 'unpaid'
+        };
+        return await orderService.createOrder(orderData);
+      });
+
+      const newOrders = await Promise.all(orderPromises);
+
+      // 2. Clear cart
+      clearCart();
+      setIsProcessing(false);
+
+      toast.success('Orders placed! Redirecting to payment...');
+
+      // 3. Redirect to the first order created for payment
+      if (newOrders.length > 0) {
+        navigate(`/client/payment/${newOrders[0].id}`);
+      } else {
+        navigate('/client/orders');
+      }
+    } catch (error) {
+      console.error("Checkout failed:", error);
+      toast.error("Failed to process checkout. Please try again.");
+      setIsProcessing(false);
+    }
   };
 
   if (items.length === 0) {
@@ -51,10 +95,11 @@ export default function Cart() {
                   <Card.Body className="p-3">
                     <div className="d-flex gap-3">
                       <img
-                        src={item.service.image}
+                        src={item.service.image || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500&auto=format'}
                         alt={item.service.title}
-                        className="rounded object-fit-cover"
+                        className="rounded object-fit-cover bg-light"
                         style={{ width: 96, height: 96 }}
+                        onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500&auto=format' }}
                       />
                       <div className="flex-grow-1">
                         <h3 className="h6 fw-bold mb-1">{item.service.title}</h3>
@@ -145,8 +190,18 @@ export default function Cart() {
                       <span>${getTotal().toFixed(2)}</span>
                     </div>
                   </div>
-                  <Button variant="default" className="w-100 mt-2" onClick={handleCheckout}>
-                    Proceed to Checkout
+                  <Button
+                    variant="default"
+                    className="w-100 mt-2"
+                    onClick={handleCheckout}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Spinner animation="border" size="sm" className="me-2" />
+                        Processing...
+                      </>
+                    ) : 'Proceed to Checkout'}
                   </Button>
                 </Card.Body>
               </Card>

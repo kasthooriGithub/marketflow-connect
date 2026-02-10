@@ -15,6 +15,7 @@ import { useAuth } from 'contexts/AuthContext';
 import { useCart } from 'contexts/CartContext';
 import { useMessaging } from 'contexts/MessagingContext';
 import { orderService } from 'services/orderService';
+import { paymentService } from 'services/paymentService';
 import { toast } from 'sonner';
 import { Card, Container, Row, Col, Modal } from 'react-bootstrap';
 
@@ -60,6 +61,7 @@ export default function ServiceDetail() {
       }
     };
 
+    console.log("[Detail Debug] Rendering ID:", id, "Path:", window.location.pathname);
     fetchService();
   }, [id]);
 
@@ -160,7 +162,12 @@ export default function ServiceDetail() {
       toast.error("Vendors can't place orders from this page.");
       return;
     }
-    if (!service || !user) return;
+    if (!service || !user) {
+      toast.error("You must be logged in to place an order.");
+      return;
+    }
+
+    if (isPlacingOrder) return;
     setIsPlacingOrder(true);
 
     try {
@@ -169,18 +176,36 @@ export default function ServiceDetail() {
         vendor_id: service.vendor_id,
         service_id: service.id,
         service_name: service.title,
-        total_amount: currentTier.price
+        total_amount: currentTier.price,
+        package_name: currentTier.name,
+        delivery_time: currentTier.deliveryTime,
+        revisions: currentTier.revisions,
+        status: 'new', // CHANGED: Start as 'new', wait for vendor proposal
+        requirements: 'Waiting for requirements...', // Can be updated later
+        created_at: serverTimestamp()
       };
 
-      await orderService.createOrder(orderData);
+      // 1. Create Order
+      const newOrder = await orderService.createOrder(orderData);
 
-      toast.success('Order placed successfully!');
+      // 2. Notify Vendor (Optional system message could go here)
+      // For now, we rely on the vendor seeing the 'new' order in their dashboard
+
+      // 3. Close Modal & Reset
       setShowConfirmModal(false);
-      navigate('/orders');
+      setIsPlacingOrder(false);
+      setSelectedTier('standard');
+
+      toast.success('Order request placed! Waiting for vendor confirmation.');
+
+      // 4. Navigate to Orders Page
+      setTimeout(() => {
+        navigate('/client/orders');
+      }, 500);
+
     } catch (error) {
       console.error("Order creation failed:", error);
-      toast.error("Failed to place order. Please try again.");
-    } finally {
+      toast.error(`Error: ${error.message || "Could not place order"}`);
       setIsPlacingOrder(false);
     }
   };
@@ -215,13 +240,16 @@ export default function ServiceDetail() {
         <Row className="g-4">
           <Col lg={8}>
             <div className="mb-4">
-              <div className="d-flex align-items-center gap-2 text-muted small mb-2">
-                <span>Services</span>
-                <ChevronRight size={14} />
-                <span>{service.id}</span>
-                <ChevronRight size={14} />
-                <span className="text-dark">{service.title}</span>
-              </div>
+              <nav aria-label="breadcrumb" className="mb-3">
+                <ol className="breadcrumb mb-0 small fw-medium">
+                  <li className="breadcrumb-item">
+                    <Link to="/services" className="text-decoration-none text-muted">Services</Link>
+                  </li>
+                  <li className="breadcrumb-item active text-dark" aria-current="page">
+                    {service.title}
+                  </li>
+                </ol>
+              </nav>
               <h1 className="display-5 fw-bold mb-3">{service.title}</h1>
 
               <Card className="border-0 shadow-sm">
@@ -292,65 +320,107 @@ export default function ServiceDetail() {
 
           <Col lg={4}>
             <div className="position-sticky" style={{ top: 92 }}>
-              <Card className="border-0 shadow-sm">
-                <Card.Body className="p-4">
-                  <Tabs value={selectedTier} onValueChange={setSelectedTier}>
-                    <TabsList className="w-100 mb-4">
-                      <TabsTrigger value="basic" className="flex-fill">Basic</TabsTrigger>
-                      <TabsTrigger value="standard" className="flex-fill">Standard</TabsTrigger>
-                      <TabsTrigger value="premium" className="flex-fill">Premium</TabsTrigger>
+              <Card className="border-0 shadow-lg rounded-4 overflow-hidden pricing-card">
+                <Card.Body className="p-0">
+                  <Tabs
+                    value={selectedTier}
+                    onValueChange={setSelectedTier}
+                    className="pricing-tabs"
+                  >
+                    <TabsList className="d-flex w-100 bg-light p-1 rounded-0 border-bottom">
+                      {tiers.map((tier) => (
+                        <TabsTrigger
+                          key={tier.id}
+                          value={tier.id}
+                          className="flex-fill py-3 fw-bold border-0 transition-all rounded-0"
+                        >
+                          {tier.name}
+                        </TabsTrigger>
+                      ))}
                     </TabsList>
 
-                    {tiers.map((tier) => (
-                      <TabsContent key={tier.id} value={tier.id}>
-                        <div className="d-flex align-items-start justify-content-between mb-2">
-                          <div>
-                            <div className="h4 fw-bold mb-1">${tier.price}</div>
-                            <div className="text-muted small">{tier.subtitle}</div>
-                          </div>
-                          {tier.popular && (
-                            <Badge className="bg-primary">Popular</Badge>
-                          )}
-                        </div>
-
-                        <div className="d-flex align-items-center justify-content-between text-muted small border-top border-bottom py-3 mb-3">
-                          <div className="d-flex align-items-center gap-2">
-                            <Clock size={16} />
-                            {tier.deliveryTime}
-                          </div>
-                          <div className="d-flex align-items-center gap-2">
-                            <RefreshCw size={16} />
-                            {tier.revisions} Revisions
-                          </div>
-                        </div>
-
-                        <div className="d-flex flex-column gap-2 mb-4">
-                          {tier.features.map((f, i) => (
-                            <div key={i} className="d-flex align-items-start gap-2">
-                              <Check size={18} className="text-success mt-1" />
-                              <span>{f}</span>
+                    <div className="p-4">
+                      {tiers.map((tier) => (
+                        <TabsContent key={tier.id} value={tier.id}>
+                          <div className="d-flex align-items-baseline justify-content-between mb-3">
+                            <div>
+                              <div className="h2 fw-bold mb-0 text-primary">${tier.price}</div>
+                              <div className="text-muted small mt-1 fw-medium">{tier.subtitle}</div>
                             </div>
-                          ))}
+                            {tier.popular && (
+                              <Badge className="bg-primary-soft text-primary border-0 px-3 py-1 rounded-pill small fw-bold">
+                                Best Value
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="bg-light rounded-3 p-3 mb-4 d-flex justify-content-between align-items-center">
+                            <div className="d-flex align-items-center gap-2 text-dark small fw-semibold">
+                              <Clock size={16} className="text-primary" />
+                              {tier.deliveryTime} Delivery
+                            </div>
+                            <div className="d-flex align-items-center gap-2 text-dark small fw-semibold">
+                              <RefreshCw size={16} className="text-primary" />
+                              {tier.revisions} Revisions
+                            </div>
+                          </div>
+
+                          <div className="features-list mb-4">
+                            <h6 className="text-uppercase x-small fw-bold text-muted mb-3 tracking-wider">What's Included</h6>
+                            <div className="d-flex flex-column gap-3">
+                              {tier.features.map((f, i) => (
+                                <div key={i} className="d-flex align-items-start gap-3">
+                                  <div className="bg-success-soft rounded-circle p-1 mt-0.5">
+                                    <Check size={14} className="text-success" />
+                                  </div>
+                                  <span className="text-dark small">{f}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </TabsContent>
+                      ))}
+
+                      {!isVendorView && (
+                        <div className="d-flex flex-column gap-3 mt-2">
+                          <Button
+                            variant="default"
+                            size="lg"
+                            className="w-100 py-3 fw-bold shadow-sm"
+                            onClick={() => setShowConfirmModal(true)}
+                          >
+                            Place Order (${currentTier.price})
+                          </Button>
+                          <div className="d-flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="lg"
+                              className="flex-grow-1 py-2.5 fw-semibold border-2"
+                              onClick={handleAddToCart}
+                            >
+                              Add to Cart
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="lg"
+                              className="flex-grow-1 py-2.5 fw-semibold border"
+                              onClick={handleContactVendor}
+                            >
+                              <MessageSquare size={18} className="me-2" />
+                              Contact
+                            </Button>
+                          </div>
                         </div>
-                      </TabsContent>
-                    ))}
-                  </Tabs>
-
-                  {!isVendorView && (
-                    <div className="d-flex flex-column gap-2">
-                      <Button variant="primary" size="lg" className="w-100" onClick={() => setShowConfirmModal(true)}>
-                        Place Order (${currentTier.price})
-                      </Button>
-                      <Button variant="outline" size="lg" className="w-100" onClick={handleAddToCart}>
-                        Add to Cart
-                      </Button>
-                      <Button variant="ghost" size="lg" className="w-100" onClick={handleContactVendor}>
-                        Contact Seller
-                      </Button>
+                      )}
                     </div>
-                  )}
-
+                  </Tabs>
                 </Card.Body>
+                <div className="bg-light py-3 border-top text-center">
+                  <span className="text-muted x-small fw-medium d-flex align-items-center justify-content-center gap-2">
+                    <Shield size={14} />
+                    Secure Payment Guarantee
+                  </span>
+                </div>
               </Card>
             </div>
           </Col>
@@ -363,7 +433,8 @@ export default function ServiceDetail() {
           <Modal.Title className="fw-bold">Confirm Order</Modal.Title>
         </Modal.Header>
         <Modal.Body className="py-4">
-          <p className="mb-0">Do you want to place an order for <strong>{service.title}</strong> – <strong>${currentTier.price}</strong>?</p>
+          <p className="mb-0">Do you want to submit a request for <strong>{service.title}</strong>?</p>
+          <p className="small text-muted mt-2">The vendor will review your request and send a proposal with final details.</p>
         </Modal.Body>
         <Modal.Footer className="border-0 pt-0 gap-2">
           <Button variant="outline" onClick={() => setShowConfirmModal(false)} disabled={isPlacingOrder}>
@@ -382,6 +453,28 @@ export default function ServiceDetail() {
 
       <style>{`
         .fill-warning { fill: #ffc107; }
+        .bg-primary-soft { background-color: rgba(13, 110, 253, 0.1); }
+        .bg-success-soft { background-color: rgba(25, 135, 84, 0.1); }
+        .tracking-wider { letter-spacing: 0.05em; }
+        .x-small { font-size: 0.75rem; }
+        
+        .pricing-card {
+           transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .pricing-tabs [data-state="active"] {
+          background-color: #fff !important;
+          color: #0d6efd !important;
+          border-bottom: 3px solid #0d6efd !important;
+          box-shadow: none !important;
+        }
+        
+        .pricing-tabs [data-state="inactive"] {
+          color: #6c757d !important;
+          background-color: transparent !important;
+        }
+        
+        .transition-all { transition: all 0.2s ease-in-out; }
       `}</style>
     </Layout>
   );

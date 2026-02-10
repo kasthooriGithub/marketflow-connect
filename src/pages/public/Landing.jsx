@@ -1,10 +1,11 @@
 import { Navbar } from 'components/layout/Navbar';
 import Hero from 'components/landing/Hero';
+import StatsSection from 'components/landing/StatsSection';
 import CategoryGrid from 'components/landing/CategoryGrid';
 import FeaturedServices from 'components/landing/FeaturedServices';
 import HowItWorks from './HowItWorks';
 import Pricing from 'components/landing/PricingSection';
-import Testimonials from 'components/landing/Testimonials';
+import ReviewsSection from 'components/landing/ReviewsSection';
 import CTA from 'components/landing/CTA';
 import Footer from 'components/layout/MarketingFooter';
 
@@ -14,10 +15,13 @@ const LandingPage = () => {
             <Navbar />
             <main className="flex-grow-1">
                 <Hero />
+                <div className="bg-white py-4 border-bottom">
+                    <StatsSection />
+                </div>
                 <CategoryGrid />
                 <FeaturedServices />
                 <HowItWorks />
-                <Testimonials />
+                <ReviewsSection />
                 <Pricing />
                 <CTA />
             </main>
