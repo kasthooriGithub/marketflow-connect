@@ -5,13 +5,14 @@
 
 ## Overview
 
-MarketFlow Connect is a comprehensive SaaS platform designed to bridge the gap between vendors and service seekers. Built with a modern tech stack, it offers a seamless experience for managing services, orders, and vendor profiles.
+MarketFlow Connect is a comprehensive SaaS platform designed to connect vendors and service seekers.
+It provides a smooth experience for managing services, orders, messaging, and vendor profiles through a single platform.
 
 ## Technologies Used
 
-- **Frontend:** React, TypeScript, Vite
-- **UI Framework:** shadcn-ui, Tailwind CSS
-- **State Management:** TanStack Query
+- **Frontend:**React.js (JavaScript), Bootstrap 5, CSS
+- **Backend / Services:** Firebase (Authentication, Firestore, Realtime Messaging), REST-style service structure
+- **State Management:** React Hooks,Context API
 - **Routing:** React Router DOM
 
 ## Getting Started
@@ -39,7 +40,7 @@ MarketFlow Connect is a comprehensive SaaS platform designed to bridge the gap b
 
 4. Start the development server:
    ```sh
-   npm run dev
+   npm start
    ```
 
 ## Branding & Credits
