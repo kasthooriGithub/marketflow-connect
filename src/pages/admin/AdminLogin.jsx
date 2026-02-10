@@ -1,21 +1,23 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, ShieldCheck, Loader2 } from 'lucide-react';
-import { Button } from 'components/ui/button';
+import { Mail, Lock, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
+import { Container, Card, Form, InputGroup, Button, Alert } from 'react-bootstrap'; 
 import { useAuth } from 'contexts/AuthContext';
 import { toast } from 'sonner';
-import { Container, Card, Form, InputGroup } from 'react-bootstrap';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(''); 
+  
   const navigate = useNavigate();
   const { adminLogin } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMsg(''); // Reset error message on new attempt
 
     const result = await adminLogin(email, password);
 
@@ -23,7 +25,9 @@ export default function AdminLogin() {
       toast.success('Welcome back, Admin!');
       navigate('/admin/dashboard', { replace: true });
     } else {
-      toast.error(result.error || 'Invalid admin credentials');
+      // Set the simple error message from AuthContext
+      setErrorMsg(result.error);
+      toast.error(result.error);
     }
 
     setIsLoading(false);
@@ -41,13 +45,17 @@ export default function AdminLogin() {
           </div>
 
           <Card.Body className="p-4 p-md-5">
-            <p className="text-center text-muted small mb-4">
-              Secure login for MarketFlow administrators. Unauthorized access is prohibited.
-            </p>
+            {/* 🔥 Simple Error Alert Box */}
+            {errorMsg && (
+              <Alert variant="danger" className="d-flex align-items-center gap-2 py-2 small border-0 shadow-sm">
+                <AlertCircle size={18} />
+                <span>{errorMsg}</span>
+              </Alert>
+            )}
 
             <Form onSubmit={handleSubmit}>
               <Form.Group className="mb-3">
-                <Form.Label className="small fw-bold text-secondary">Email Address</Form.Label>
+                <Form.Label className="small fw-bold text-secondary text-uppercase">Email Address</Form.Label>
                 <InputGroup className="shadow-sm">
                   <InputGroup.Text className="bg-light border-end-0">
                     <Mail size={18} className="text-muted" />
@@ -64,7 +72,7 @@ export default function AdminLogin() {
               </Form.Group>
 
               <Form.Group className="mb-4">
-                <Form.Label className="small fw-bold text-secondary">Password</Form.Label>
+                <Form.Label className="small fw-bold text-secondary text-uppercase">Password</Form.Label>
                 <InputGroup className="shadow-sm">
                   <InputGroup.Text className="bg-light border-end-0">
                     <Lock size={18} className="text-muted" />
@@ -82,9 +90,9 @@ export default function AdminLogin() {
 
               <Button
                 type="submit"
-                variant="default"
+                variant="primary"
                 size="lg"
-                className="w-100 py-3 shadow border-0"
+                className="w-100 py-3 fw-bold shadow border-0"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -98,24 +106,14 @@ export default function AdminLogin() {
               </Button>
             </Form>
 
-            <div className="mt-5 pt-4 border-top text-center">
-              <div className="p-3 bg-light rounded-3 mb-4 text-start">
-                <p className="extra-small fw-bold text-uppercase text-muted mb-2 tracking-wider">Demo Access</p>
-                <code className="small text-primary">admin@marketflow.com</code><br />
-                <code className="small text-primary">admin123</code>
-              </div>
-
-              <Link to="/" className="text-decoration-none small text-muted hover-text-primary transition-all">
-                ← Return to main site
+            <div className="mt-4 text-center">
+              <Link to="/" className="text-decoration-none text-muted small hover-primary">
+                &larr; Back to Landing Page
               </Link>
             </div>
           </Card.Body>
         </Card>
       </Container>
-      <style>{`
-        .extra-small { font-size: 0.65rem; }
-        .hover-text-primary:hover { color: var(--bs-primary) !important; text-decoration: underline !important; }
-      `}</style>
     </div>
   );
 }

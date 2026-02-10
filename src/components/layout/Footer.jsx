@@ -26,7 +26,9 @@ export function Footer() {
               <li className="mb-2"><Link to="/services" className="text-white-50 text-decoration-none hover-white">Browse Services</Link></li>
               <li className="mb-2"><Link to="/how-it-works" className="text-white-50 text-decoration-none hover-white">How It Works</Link></li>
               <li className="mb-2"><Link to="/pricing" className="text-white-50 text-decoration-none hover-white">Pricing</Link></li>
-              <li className="mb-2"><Link to="/vendors" className="text-white-50 text-decoration-none hover-white">For Vendors</Link></li>
+              <li className="mb-2"><Link to="/trust-safety" className="text-white-50 text-decoration-none hover-white">Trust & Safety</Link></li>
+              <li className="mb-2"><Link to="/become-seller" className="text-white-50 text-decoration-none hover-white">Become a Seller</Link></li>
+              <li className="mb-2"><Link to="/seller-resources" className="text-white-50 text-decoration-none hover-white">Seller Resources</Link></li>
             </ul>
           </Col>
 
@@ -34,20 +36,23 @@ export function Footer() {
           <Col md={3}>
             <h5 className="fw-bold mb-3">Company</h5>
             <ul className="list-unstyled">
-              <li className="mb-2"><a href="#" className="text-white-50 text-decoration-none hover-white">About Us</a></li>
-              <li className="mb-2"><a href="#" className="text-white-50 text-decoration-none hover-white">Careers</a></li>
-              <li className="mb-2"><a href="#" className="text-white-50 text-decoration-none hover-white">Blog</a></li>
-              <li className="mb-2"><a href="#" className="text-white-50 text-decoration-none hover-white">Contact</a></li>
+              <li className="mb-2"><Link to="/community" className="text-white-50 text-decoration-none hover-white">Community</Link></li>
+              <li className="mb-2"><Link to="/success-stories" className="text-white-50 text-decoration-none hover-white">Success Stories</Link></li>
+              <li className="mb-2"><Link to="/about" className="text-white-50 text-decoration-none hover-white">About Us</Link></li>
+              <li className="mb-2"><Link to="/careers" className="text-white-50 text-decoration-none hover-white">Careers</Link></li>
+              <li className="mb-2"><Link to="/press" className="text-white-50 text-decoration-none hover-white">Press</Link></li>
+              <li className="mb-2"><Link to="/contact" className="text-white-50 text-decoration-none hover-white">Contact</Link></li>
             </ul>
           </Col>
 
-          {/* Legal */}
+          {/* Legal & Support */}
           <Col md={3}>
-            <h5 className="fw-bold mb-3">Legal</h5>
+            <h5 className="fw-bold mb-3">Legal & Support</h5>
             <ul className="list-unstyled">
-              <li className="mb-2"><a href="#" className="text-white-50 text-decoration-none hover-white">Privacy Policy</a></li>
-              <li className="mb-2"><a href="#" className="text-white-50 text-decoration-none hover-white">Terms of Service</a></li>
-              <li className="mb-2"><a href="#" className="text-white-50 text-decoration-none hover-white">Cookie Policy</a></li>
+              <li className="mb-2"><Link to="/help-center" className="text-white-50 text-decoration-none hover-white">Help Center</Link></li>
+              <li className="mb-2"><Link to="/faq" className="text-white-50 text-decoration-none hover-white">FAQ</Link></li>
+              <li className="mb-2"><Link to="/terms" className="text-white-50 text-decoration-none hover-white">Terms of Service</Link></li>
+              <li className="mb-2"><Link to="/privacy" className="text-white-50 text-decoration-none hover-white">Privacy Policy</Link></li>
             </ul>
           </Col>
         </Row>

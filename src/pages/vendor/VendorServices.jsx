@@ -18,14 +18,14 @@ export default function MyServices() {
 
   useEffect(() => {
     if (!user?.uid) return;
-    
+
     // Real-time listener for services belonging to this vendor
     const q = query(collection(db, 'services'), where('vendor_id', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     });
-    
+
     return () => unsubscribe();
   }, [user]);
 
@@ -36,7 +36,7 @@ export default function MyServices() {
   );
 
   return (
-    <Layout>
+    <Layout footerVariant="dashboard">
       <div className="bg-light min-vh-100 py-5">
         <Container>
           {/* Header Section */}
@@ -48,8 +48,8 @@ export default function MyServices() {
               <h1 className="display-6 fw-bold text-dark mb-1">My Service Catalog</h1>
               <p className="text-muted mb-0">You have {services.length} active listings online</p>
             </div>
-            <Button 
-              className="rounded-pill px-4 py-2 shadow-sm d-flex align-items-center" 
+            <Button
+              className="rounded-pill px-4 py-2 shadow-sm d-flex align-items-center"
               onClick={() => setIsAddModalOpen(true)}
             >
               <Plus size={20} className="me-2" /> New Service
@@ -63,8 +63,8 @@ export default function MyServices() {
                   <Card className="h-100 border-0 shadow-sm hover-card rounded-4 overflow-hidden bg-white">
                     {/* Top Decorative Banner */}
                     <div className="service-banner d-flex align-items-center justify-content-center">
-                       <div className="banner-overlay"></div>
-                       <Package size={40} className="text-white position-relative z-1" />
+                      <div className="banner-overlay"></div>
+                      <Package size={40} className="text-white position-relative z-1" />
                     </div>
 
                     <Card.Body className="p-4">
@@ -89,8 +89,8 @@ export default function MyServices() {
 
                       {/* Details Button - Navigates to VendorServiceDetails */}
                       <div className="d-flex gap-2">
-                        <Button 
-                          variant="outline-dark" 
+                        <Button
+                          variant="outline-dark"
                           className="w-100 rounded-3 d-flex align-items-center justify-content-center py-2"
                           onClick={() => navigate(`/vendor/services/${service.id}`)}
                         >

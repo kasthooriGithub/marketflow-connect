@@ -5,16 +5,16 @@ import { Twitter, Linkedin, Instagram, Facebook } from 'lucide-react';
 export default function Footer() {
     const footerLinks = {
         'For Clients': [
-            { label: 'How It Works', href: '#how-it-works' },
+            { label: 'How It Works', href: '/how-it-works' },
             { label: 'Browse Services', href: '/services' },
-            { label: 'Pricing', href: '#pricing' },
-            { label: 'Trust & Safety', href: '/trust' },
+            { label: 'Pricing', href: '/pricing' },
+            { label: 'Trust & Safety', href: '/trust-safety' },
         ],
         'For Freelancers': [
-            { label: 'Become a Seller', href: '/signup' },
-            { label: 'Seller Resources', href: '/resources' },
+            { label: 'Become a Seller', href: '/become-seller' },
+            { label: 'Seller Resources', href: '/seller-resources' },
             { label: 'Community', href: '/community' },
-            { label: 'Success Stories', href: '/stories' },
+            { label: 'Success Stories', href: '/success-stories' },
         ],
         Company: [
             { label: 'About Us', href: '/about' },
@@ -23,7 +23,7 @@ export default function Footer() {
             { label: 'Contact', href: '/contact' },
         ],
         Support: [
-            { label: 'Help Center', href: '/help' },
+            { label: 'Help Center', href: '/help-center' },
             { label: 'FAQ', href: '/faq' },
             { label: 'Terms of Service', href: '/terms' },
             { label: 'Privacy Policy', href: '/privacy' },

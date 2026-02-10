@@ -27,17 +27,18 @@ export default function SearchBar() {
     };
 
     return (
-        <div className="search-bar-container">
+        <div className="search-bar-container mx-auto" style={{ maxWidth: '800px' }}>
             <form onSubmit={handleSearch} className="position-relative mb-4">
                 <div
-                    className="d-flex align-items-center bg-white rounded-3"
+                    className="d-flex align-items-center bg-white rounded-4 overflow-hidden"
                     style={{
-                        border: isFocused ? '2px solid #0A2540' : '2px solid #E4E5E7',
-                        boxShadow: isFocused ? '0 4px 12px rgba(10, 37, 64, 0.1)' : '0 2px 8px rgba(0, 0, 0, 0.04)',
-                        transition: 'all 0.2s ease'
+                        border: isFocused ? '2px solid #00B67A' : '2px solid #E4E5E7',
+                        boxShadow: isFocused ? '0 8px 24px rgba(0, 182, 122, 0.15)' : '0 4px 12px rgba(0, 0, 0, 0.05)',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        padding: '4px'
                     }}
                 >
-                    <Search className="ms-3" size={18} style={{ color: '#62646A' }} />
+                    <Search className="ms-3 d-none d-sm-block" size={20} style={{ color: '#95979D' }} />
                     <input
                         type="text"
                         className="form-control border-0 py-3 px-3"
@@ -47,20 +48,22 @@ export default function SearchBar() {
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
                         style={{
-                            fontSize: '1rem',
+                            fontSize: '1.1rem',
                             boxShadow: 'none',
-                            color: '#404145'
+                            color: '#404145',
+                            backgroundColor: 'transparent'
                         }}
                     />
                     <button
                         type="submit"
-                        className="btn m-1 px-4 py-2 fw-semibold"
+                        className="btn px-4 py-2 fw-bold text-white shadow-sm"
                         style={{
                             background: '#0A2540',
                             border: 'none',
-                            borderRadius: '6px',
-                            color: 'white',
-                            fontSize: '0.95rem'
+                            borderRadius: '10px',
+                            fontSize: '1rem',
+                            minWidth: '120px',
+                            transition: 'all 0.2s ease'
                         }}
                     >
                         Search
@@ -68,33 +71,56 @@ export default function SearchBar() {
                 </div>
             </form>
 
-            <div className="d-flex flex-wrap gap-2 justify-content-center align-items-center">
-                <span className="text-muted small me-2">Popular:</span>
-                {quickCategories.map((category) => (
-                    <button
-                        key={category}
-                        onClick={() => handleCategoryClick(category)}
-                        className="border-0 px-3 py-2 rounded-pill fw-medium"
-                        style={{
-                            background: '#F7F7F7',
-                            color: '#62646A',
-                            fontSize: '0.9rem',
-                            transition: 'all 0.2s ease',
-                            cursor: 'pointer'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.target.style.background = '#E4E5E7';
-                            e.target.style.color = '#404145';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.target.style.background = '#F7F7F7';
-                            e.target.style.color = '#62646A';
-                        }}
-                    >
-                        {category}
-                    </button>
-                ))}
+            <div className="d-flex align-items-center gap-2">
+                <span className="text-muted small fw-semibold flex-shrink-0 d-none d-md-inline">Popular:</span>
+                <div
+                    className="d-flex gap-2 overflow-auto pb-2 no-scrollbar mobile-scroll-container"
+                    style={{
+                        msOverflowStyle: 'none',
+                        scrollbarWidth: 'none',
+                    }}
+                >
+                    {quickCategories.map((category) => (
+                        <button
+                            key={category}
+                            onClick={() => handleCategoryClick(category)}
+                            className="btn btn-sm border-0 px-3 py-2 rounded-pill fw-medium flex-shrink-0"
+                            style={{
+                                background: '#F0F2F5',
+                                color: '#404145',
+                                fontSize: '0.85rem',
+                                transition: 'all 0.2s ease',
+                                whiteSpace: 'nowrap'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.target.style.background = '#E4E5E7';
+                                e.target.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.target.style.background = '#F0F2F5';
+                                e.target.style.transform = 'translateY(0)';
+                            }}
+                        >
+                            {category}
+                        </button>
+                    ))}
+                </div>
             </div>
+
+            <style>{`
+                .no-scrollbar::-webkit-scrollbar {
+                    display: none;
+                }
+                .mobile-scroll-container {
+                    mask-image: linear-gradient(to right, black 85%, transparent 100%);
+                    -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+                }
+                @media (max-width: 576px) {
+                    .search-bar-container .btn {
+                        min-width: 80px;
+                    }
+                }
+            `}</style>
         </div>
     );
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from 'contexts/AuthContext';
 import { Layout } from 'components/layout/Layout';
 import { ProposalDetailModal } from 'components/client/ProposalDetailModal';
+import { RecentActivity } from 'components/common/RecentActivity';
 import {
     LayoutDashboard,
     ShoppingBag,
@@ -10,7 +11,11 @@ import {
     MessageSquare,
     Settings,
     TrendingUp,
-    FileText,
+    UserCircle,
+    CreditCard,
+    ArrowRight,
+    Search,
+    Star
 } from 'lucide-react';
 import { Container, Row, Col, Card } from 'react-bootstrap';
 import {
@@ -18,9 +23,7 @@ import {
     query,
     where,
     getCountFromServer,
-    getDocs,
-    orderBy,
-    limit
+    getDocs
 } from 'firebase/firestore';
 import { db } from 'lib/firebase';
 import { getSavedServicesCount } from 'services/savedServiceService';
@@ -28,175 +31,173 @@ import { proposalService } from 'services/proposalService';
 
 export default function ClientDashboard() {
     const { user } = useAuth();
+
     const [stats, setStats] = useState([]);
     const [recentActivity, setRecentActivity] = useState([]);
     const [proposals, setProposals] = useState([]);
     const [selectedProposal, setSelectedProposal] = useState(null);
     const [showProposalModal, setShowProposalModal] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [pendingPayments, setPendingPayments] = useState(0);
+    const [activeOrders, setActiveOrders] = useState(0);
 
     const quickLinks = [
-        { to: '/services', label: 'Browse Services', icon: LayoutDashboard },
-        { to: '/orders', label: 'My Orders', icon: ShoppingBag },
-        { to: '/messages', label: 'Messages', icon: MessageSquare },
-        { to: '/settings', label: 'Settings', icon: Settings },
+        { to: '/services', label: 'Browse Services', icon: LayoutDashboard, color: '#4e73df' },
+        { to: '/orders', label: 'My Orders', icon: ShoppingBag, color: '#1cc88a' },
+        { to: '/messages', label: 'Messages', icon: MessageSquare, color: '#36b9cc' },
+        { to: '/client/saved-services', label: 'Saved Services', icon: Heart, color: '#e74a3b' },
+        { to: '/client/payment-history', label: 'Payment History', icon: CreditCard, color: '#f6c23e' },
+        { to: '/dashboard/review-platform', label: 'Rate Platform', icon: Star, color: '#FFB33E' },
+        { to: '/settings', label: 'Settings', icon: Settings, color: '#858796' },
     ];
 
-    const iconColors = {
-        warning: 'warning',
-        primary: 'primary',
-        success: 'success'
+    const getOrderMeta = (status) => {
+        const s = status?.toLowerCase();
+        if (s === 'completed')
+            return { title: 'Order Completed', icon: TrendingUp, color: 'success' };
+        if (s === 'cancelled' || s === 'canceled')
+            return { title: 'Order Cancelled', icon: ShoppingBag, color: 'warning' };
+        if (s === 'pending' || s === 'in_progress')
+            return { title: 'Order In Progress', icon: ShoppingBag, color: 'primary' };
+
+        return { title: 'Order Update', icon: ShoppingBag, color: 'primary' };
     };
 
-    const iconBgColors = {
-        warning: 'bg-warning bg-opacity-25',
-        primary: 'bg-primary bg-opacity-25',
-        success: 'bg-success bg-opacity-25'
+    const iconBg = {
+        primary: 'bg-primary bg-opacity-10 text-primary',
+        success: 'bg-success bg-opacity-10 text-success',
+        warning: 'bg-warning bg-opacity-10 text-warning',
     };
 
     useEffect(() => {
-        const fetchDashboardData = async () => {
-            if (!user?.uid) return;
+        if (!user?.uid) return;
 
+        const fetchDashboard = async () => {
             try {
                 setLoading(true);
                 const uid = user.uid;
 
-                // Client stats: Active Orders, Saved Services, Messages
                 const activeOrdersQuery = query(
                     collection(db, 'orders'),
                     where('client_id', '==', uid),
                     where('status', 'in', ['pending', 'in_progress'])
                 );
-                const activeOrdersSnapshot = await getCountFromServer(activeOrdersQuery);
-                const activeOrders = activeOrdersSnapshot.data().count;
-
+                const activeOrdersSnap = await getCountFromServer(activeOrdersQuery);
                 const savedServices = await getSavedServicesCount(uid);
 
-                const messagesQuery = query(
+                const convoQuery = query(
                     collection(db, 'conversations'),
-                    where('participants', 'array-contains', uid),
-                    where('last_message_read', '==', false)
+                    where('participants', 'array-contains', uid)
                 );
-                const messagesSnapshot = await getCountFromServer(messagesQuery);
-                const unreadMessages = messagesSnapshot.data().count;
 
-                setStats([
-                    { label: 'Active Orders', value: activeOrders.toString(), icon: ShoppingBag },
-                    { label: 'Saved Services', value: savedServices.toString(), icon: Heart },
-                    { label: 'Unread Messages', value: unreadMessages.toString(), icon: MessageSquare },
-                ]);
+                const convoSnap = await getDocs(convoQuery);
+                let unreadCount = 0;
+                convoSnap.docs.forEach(doc => {
+                    const data = doc.data();
+                    if (data.last_message && data.last_message_sender_id !== uid) unreadCount++;
+                });
 
-                // Recent activity for client
-                const recentOrdersQuery = query(
+                const pendingPaymentsQuery = query(
                     collection(db, 'orders'),
                     where('client_id', '==', uid),
-                    orderBy('created_at', 'desc'),
-                    limit(3)
+                    where('status', '==', 'pending_payment')
                 );
-                const recentOrdersSnapshot = await getDocs(recentOrdersQuery);
-                const activities = recentOrdersSnapshot.docs.map(doc => {
+                const pendingSnap = await getCountFromServer(pendingPaymentsQuery);
+                setPendingPayments(pendingSnap.data().count);
+                setActiveOrders(activeOrdersSnap.data().count);
+
+                setStats([
+                    { label: 'Active Orders', value: activeOrdersSnap.data().count, icon: ShoppingBag, color: 'primary' },
+                    { label: 'Saved Services', value: savedServices, icon: Heart, color: 'danger' },
+                    { label: 'Unread Messages', value: unreadCount, icon: MessageSquare, color: 'info' },
+                ]);
+
+                const ordersQuery = query(collection(db, 'orders'), where('client_id', '==', uid));
+                const ordersSnap = await getDocs(ordersQuery);
+
+                const activities = ordersSnap.docs.map(doc => {
                     const data = doc.data();
+                    const meta = getOrderMeta(data.status);
+                    let createdDate = data.created_at?.toDate ? data.created_at.toDate() : new Date();
                     return {
                         id: doc.id,
-                        type: 'order',
-                        title: data.status === 'completed' ? 'Order completed' : 'Order updated',
-                        description: `${data.service_name || 'Service'} • ${formatTimeAgo(data.created_at)}`,
-                        icon: data.status === 'completed' ? TrendingUp : ShoppingBag,
-                        iconColor: data.status === 'completed' ? 'success' : 'primary'
+                        createdDate,
+                        title: meta.title,
+                        description: `${data.service_name || 'Service'} • ${createdDate.toLocaleDateString()}`,
+                        icon: meta.icon,
+                        color: meta.color,
+                        status: data.status,
+                        orderId: doc.id
                     };
-                });
-                setRecentActivity(activities);
+                }).sort((a, b) => b.createdDate - a.createdDate);
 
-            } catch (error) {
-                console.error('Error fetching dashboard data:', error);
+                setRecentActivity(activities.slice(0, 5));
+            } catch (err) {
+                console.error('Dashboard Error:', err);
             } finally {
                 setLoading(false);
             }
         };
-
-        fetchDashboardData();
+        fetchDashboard();
     }, [user]);
 
-    // Subscribe to proposals
     useEffect(() => {
         if (!user?.uid) return;
-
-        const unsubscribe = proposalService.subscribeToClientProposals(user.uid, (fetchedProposals) => {
-            setProposals(fetchedProposals.filter(p => p.status === 'pending' || p.status === 'changes_requested'));
+        const unsub = proposalService.subscribeToClientProposals(user.uid, (data) => {
+            setProposals(data.filter(p => p.status === 'pending' || p.status === 'changes_requested'));
         });
-
-        return () => unsubscribe();
+        return () => unsub();
     }, [user]);
-
-    const handleProposalClick = (proposal) => {
-        setSelectedProposal(proposal);
-        setShowProposalModal(true);
-    };
-
-    const formatTimeAgo = (timestamp) => {
-        if (!timestamp) return 'Recently';
-
-        const now = new Date();
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 60) {
-            return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-        } else if (diffHours < 24) {
-            return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-        } else if (diffDays < 7) {
-            return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-        } else {
-            return date.toLocaleDateString();
-        }
-    };
 
     if (loading) {
         return (
-            <Layout>
-                <div className="py-5">
-                    <Container>
-                        <div className="text-center py-5">
-                            <div className="spinner-border text-primary" role="status">
-                                <span className="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                    </Container>
-                </div>
+            <Layout footerVariant="dashboard">
+                <div className="py-5 text-center"><div className="spinner-border text-primary" /></div>
             </Layout>
         );
     }
 
     return (
-        <Layout>
-            <div className="py-5">
+        <Layout footerVariant="dashboard">
+            <div className="py-5 bg-light min-vh-100">
                 <Container>
-                    <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4">
+                    {/* Welcome Message Section from File Reference */}
+                    <div className="mb-5 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                         <div>
-                            <h1 className="h3 fw-bold text-dark mb-2">
-                                Welcome back, {user?.full_name || user?.name}!
+                            <h1 className="h3 fw-bold mb-1">
+                                Welcome back, <span className="text-primary">{user?.full_name || user?.name || 'Client'}</span>!
                             </h1>
-                            <p className="text-secondary">
-                                Manage your orders and discover new services
-                            </p>
+                            <p className="text-muted mb-0">Here's what's happening with your projects today.</p>
+                        </div>
+                        <div className="d-flex gap-2">
+                            {pendingPayments > 0 && (
+                                <Link to="/orders" className="btn btn-warning btn-sm d-flex align-items-center gap-2 px-3 rounded-pill shadow-sm">
+                                    <CreditCard size={16} />
+                                    <span>{pendingPayments} Pending Payment{pendingPayments > 1 ? 's' : ''}</span>
+                                    <ArrowRight size={14} />
+                                </Link>
+                            )}
+                            {activeOrders > 0 && (
+                                <Link to="/orders" className="btn btn-outline-primary btn-sm d-flex align-items-center gap-2 px-3 rounded-pill">
+                                    <ShoppingBag size={16} />
+                                    <span>{activeOrders} Active Order{activeOrders > 1 ? 's' : ''}</span>
+                                </Link>
+                            )}
                         </div>
                     </div>
 
+                    {/* KPI CARDS */}
                     <Row className="mb-4 g-3">
-                        {stats.map((stat) => (
+                        {stats.map(stat => (
                             <Col md={4} key={stat.label}>
-                                <Card className="h-100 border p-3">
-                                    <div className="d-flex align-items-center justify-content-between">
+                                <Card className="border-0 shadow-sm p-3 h-100">
+                                    <div className="d-flex justify-content-between align-items-center">
                                         <div>
-                                            <p className="small text-muted mb-1">{stat.label}</p>
-                                            <p className="h4 fw-bold text-dark mb-0">{stat.value}</p>
+                                            <p className="small text-muted mb-1 fw-medium">{stat.label}</p>
+                                            <p className="h3 fw-bold mb-0 text-dark">{stat.value}</p>
                                         </div>
-                                        <div className="p-3 rounded bg-primary bg-opacity-10 d-flex align-items-center justify-content-center">
-                                            <stat.icon size={24} className="text-primary" />
+                                        <div className={`p-3 rounded-circle bg-${stat.color || 'primary'} bg-opacity-10 text-${stat.color || 'primary'}`}>
+                                            <stat.icon size={24} />
                                         </div>
                                     </div>
                                 </Card>
@@ -204,47 +205,44 @@ export default function ClientDashboard() {
                         ))}
                     </Row>
 
-                    <Row className="g-4">
-                        <Col md={6}>
-                            <Card className="h-100 border">
-                                <Card.Body className="p-4">
-                                    <h2 className="h5 fw-bold mb-4">Recent Activity</h2>
-                                    {recentActivity.length > 0 ? (
-                                        <div className="d-flex flex-column gap-3">
-                                            {recentActivity.map((activity) => (
-                                                <div key={activity.id} className="d-flex align-items-center gap-3 p-3 rounded bg-light">
-                                                    <div className={`rounded-circle p-2 d-flex align-items-center justify-content-center ${iconBgColors[activity.iconColor]}`} style={{ width: 40, height: 40 }}>
-                                                        <activity.icon size={20} className={`text-${iconColors[activity.iconColor]}`} />
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        <p className="small fw-bold text-dark mb-0">{activity.title}</p>
-                                                        <p className="small text-muted mb-0">{activity.description}</p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-4">
-                                            <p className="text-muted mb-0">No recent activity</p>
-                                        </div>
-                                    )}
+                    <Row className="g-4 d-flex align-items-stretch">
+                        {/* RECENT ACTIVITY */}
+                        <Col md={6} className="d-flex">
+                            <Card className="border-0 shadow-sm w-100 flex-fill">
+                                <Card.Body className="p-4 d-flex flex-column">
+                                    <h2 className="h6 fw-bold mb-3">Recent Activity</h2>
+                                    <div className="recent-scroll flex-grow-1">
+                                        <RecentActivity limit={5} />
+                                    </div>
                                 </Card.Body>
                             </Card>
                         </Col>
 
-                        <Col md={6}>
-                            <Card className="h-100 border">
+                        {/* QUICK ACTIONS */}
+                        <Col md={6} className="d-flex">
+                            <Card className="border-0 shadow-sm w-100 flex-fill">
                                 <Card.Body className="p-4">
-                                    <h2 className="h5 fw-bold mb-4">Quick Links</h2>
+                                    <h2 className="h6 fw-bold mb-4">Quick Actions</h2>
+                                    <div className="mb-3">
+                                        <Link to="/services" className="d-flex align-items-center justify-content-between p-3 rounded-4 bg-primary text-white text-decoration-none hover-primary-dark transition-all shadow-sm mb-3">
+                                            <div className="d-flex align-items-center gap-3">
+                                                <div className="p-2 bg-white bg-opacity-20 rounded-3">
+                                                    <Search size={22} />
+                                                </div>
+                                                <div>
+                                                    <p className="mb-0 fw-bold">Browse Services</p>
+                                                    <p className="small mb-0 opacity-75">Find the perfect expert</p>
+                                                </div>
+                                            </div>
+                                            <ArrowRight size={20} />
+                                        </Link>
+                                    </div>
                                     <Row className="g-3">
-                                        {quickLinks.map((link) => (
-                                            <Col xs={6} key={link.to}>
-                                                <Link
-                                                    to={link.to}
-                                                    className="d-flex align-items-center gap-3 p-3 rounded bg-light text-decoration-none hover-bg-gray transition-colors h-100"
-                                                >
-                                                    <link.icon size={20} className="text-primary" />
-                                                    <span className="small fw-medium text-dark">{link.label}</span>
+                                        {quickLinks.slice(1).map((link, index) => (
+                                            <Col xs={6} key={index}>
+                                                <Link to={link.to} className="d-flex align-items-center gap-2 p-3 rounded-3 border bg-white text-decoration-none hover-action transition-all h-100">
+                                                    <link.icon size={18} style={{ color: link.color }} />
+                                                    <span className="small fw-bold text-dark">{link.label}</span>
                                                 </Link>
                                             </Col>
                                         ))}
@@ -254,35 +252,23 @@ export default function ClientDashboard() {
                         </Col>
                     </Row>
 
-                    {/* Proposals Section */}
+                    {/* PROPOSALS */}
                     {proposals.length > 0 && (
                         <Row className="mt-4">
                             <Col>
-                                <Card className="border">
+                                <Card className="border-0 shadow-sm border-top border-warning border-4">
                                     <Card.Body className="p-4">
-                                        <h2 className="h5 fw-bold mb-4">Pending Proposals</h2>
-                                        <div className="d-flex flex-column gap-3">
-                                            {proposals.map((proposal) => (
-                                                <div
-                                                    key={proposal.id}
-                                                    className="d-flex align-items-center justify-content-between p-3 rounded bg-light cursor-pointer hover-bg-gray"
-                                                    onClick={() => handleProposalClick(proposal)}
-                                                >
-                                                    <div className="d-flex align-items-center gap-3">
-                                                        <div className="rounded-circle p-2 d-flex align-items-center justify-content-center bg-primary bg-opacity-10" style={{ width: 40, height: 40 }}>
-                                                            <FileText size={20} className="text-primary" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="small fw-bold text-dark mb-0">{proposal.title}</p>
-                                                            <p className="small text-muted mb-0">{proposal.service_name} • ${proposal.price}</p>
-                                                        </div>
-                                                    </div>
-                                                    <span className="badge bg-warning text-dark rounded-pill px-3">
-                                                        {proposal.status === 'changes_requested' ? 'Changes Requested' : 'New'}
-                                                    </span>
+                                        <h2 className="h6 fw-bold mb-3">Pending Proposals</h2>
+                                        {proposals.map(p => (
+                                            <div key={p.id} className="d-flex justify-content-between p-3 mb-2 bg-light rounded cursor-pointer border hover-bg-gray transition-all"
+                                                onClick={() => { setSelectedProposal(p); setShowProposalModal(true); }}>
+                                                <div>
+                                                    <p className="fw-bold small mb-0">{p.title}</p>
+                                                    <p className="small text-muted mb-0">${p.price} • {p.service_name}</p>
                                                 </div>
-                                            ))}
-                                        </div>
+                                                <span className="badge bg-warning text-dark align-self-center">Review</span>
+                                            </div>
+                                        ))}
                                     </Card.Body>
                                 </Card>
                             </Col>
@@ -295,16 +281,31 @@ export default function ClientDashboard() {
                 open={showProposalModal}
                 onOpenChange={setShowProposalModal}
                 proposal={selectedProposal}
-                onActionComplete={() => {
-                    setShowProposalModal(false);
-                    setSelectedProposal(null);
-                }}
             />
 
             <style>{`
-        .hover-bg-gray:hover { background-color: #e9ecef !important; }
-        .cursor-pointer { cursor: pointer; }
-      `}</style>
+                .recent-scroll {
+                    max-height: 320px;
+                    overflow-y: auto;
+                    padding-right: 5px;
+                }
+                .recent-scroll::-webkit-scrollbar { width: 4px; }
+                .recent-scroll::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 10px; }
+                .cursor-pointer { cursor: pointer; }
+                .hover-action:hover {
+                    background-color: #f8f9fa !important;
+                    border-color: #4e73df !important;
+                    transform: translateX(4px);
+                }
+                .hover-primary-dark:hover {
+                    background-color: #2e59d9 !important;
+                    transform: translateY(-2px);
+                    box-shadow: 0 5px 15px rgba(78, 115, 223, 0.3) !important;
+                }
+                .cursor-pointer { cursor: pointer; }
+                .transition-all { transition: all 0.2s ease-in-out; }
+                .rounded-4 { border-radius: 1rem !important; }
+            `}</style>
         </Layout>
     );
 }

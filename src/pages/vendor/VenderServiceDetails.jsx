@@ -2,13 +2,16 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from 'lib/firebase';
 import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
+import { getDoc, getDocs, addDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { useAuth } from 'contexts/AuthContext'; // ✅ NEW
+import { chatService } from 'services/chatService'; // ✅ NEW
 import { Layout } from 'components/layout/Layout';
 import { Button } from 'components/ui/button';
 import { AddServiceModal } from 'components/vendor/AddServiceModal';
 import { toast } from 'sonner';
-import { 
-  ArrowLeft, Edit, Star, BarChart3, Globe, PackageCheck, 
-  Zap, FileText, ShoppingBag, ListFilter, Calendar, 
+import {
+  ArrowLeft, Edit, Star, BarChart3, Globe, PackageCheck,
+  Zap, FileText, ShoppingBag, ListFilter, Calendar,
   DollarSign, Inbox, MessageSquare, Eye
 } from 'lucide-react';
 import { Container, Row, Col, Card, Badge, Table, Tabs, Tab } from 'react-bootstrap';
@@ -21,9 +24,9 @@ const ORDER_STATUS = {
 };
 
 export default function VendorServiceDetails() {
-  const { serviceId } = useParams(); 
+  const { serviceId } = useParams();
   const navigate = useNavigate();
-  
+
   const [service, setService] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -32,7 +35,7 @@ export default function VendorServiceDetails() {
   // Categorize orders based on status
   const { activeOrders, completedOrders, cancelledOrders } = useMemo(() => {
     if (!orders.length) return { activeOrders: [], completedOrders: [], cancelledOrders: [] };
-    
+
     return {
       activeOrders: orders.filter(o => ORDER_STATUS.ACTIVE.includes(o.status?.toLowerCase())),
       completedOrders: orders.filter(o => ORDER_STATUS.COMPLETED.includes(o.status?.toLowerCase())),
@@ -46,33 +49,33 @@ export default function VendorServiceDetails() {
     netEarnings: completedOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0),
     pendingRevenue: activeOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0),
     totalRevenue: completedOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0) +
-                  activeOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0)
+      activeOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0)
   }), [service, activeOrders, completedOrders]);
 
   // Fetch client name from Firestore
   const fetchClientName = useCallback(async (clientId) => {
     if (!clientId) return "Client";
-    
+
     try {
       // Try fetching from clients collection first
       const clientRef = doc(db, 'clients', clientId);
       const clientSnap = await getDoc(clientRef);
-      
+
       if (clientSnap.exists()) {
         return clientSnap.data().display_name || "Client";
       }
-      
+
       // Fallback to users collection
       const userRef = doc(db, 'users', clientId);
       const userSnap = await getDoc(userRef);
-      
+
       if (userSnap.exists()) {
         return userSnap.data().full_name || "Client";
       }
     } catch (error) {
       console.error('Error fetching client name:', error);
     }
-    
+
     return "Client";
   }, []);
 
@@ -94,31 +97,31 @@ export default function VendorServiceDetails() {
           return;
         }
 
-        const serviceData = { 
-          id: docSnap.id, 
+        const serviceData = {
+          id: docSnap.id,
           ...docSnap.data(),
           category: docSnap.data().category?.toUpperCase() || 'SERVICE'
         };
-        
+
         setService(serviceData);
 
         // Setup orders query
         const ordersQuery = query(
-          collection(db, 'orders'), 
+          collection(db, 'orders'),
           where('service_id', '==', serviceId)
         );
 
         unsubscribeOrders = onSnapshot(ordersQuery, async (snapshot) => {
           const orderPromises = snapshot.docs.map(async (orderDoc) => {
             const orderData = { id: orderDoc.id, ...orderDoc.data() };
-            
+
             // Fetch client name
             const clientName = await fetchClientName(orderData.client_id);
-            
+
             return {
               ...orderData,
               clientName,
-              formattedDate: orderData.created_at?.toDate 
+              formattedDate: orderData.created_at?.toDate
                 ? orderData.created_at.toDate().toLocaleDateString()
                 : 'Recent'
             };
@@ -144,8 +147,8 @@ export default function VendorServiceDetails() {
   }, [serviceId, navigate, fetchClientName]);
 
   const handleViewLive = () => {
-    navigate(`/services/${serviceId}`, { 
-      state: { fromVendor: true } 
+    navigate(`/services/${serviceId}`, {
+      state: { fromVendor: true }
     });
   };
 
@@ -157,11 +160,11 @@ export default function VendorServiceDetails() {
   if (!service) return null;
 
   return (
-    <Layout>
+    <Layout footerVariant="dashboard">
       <div className="bg-soft-gray min-vh-100 py-4">
         <Container>
           {/* Header Section */}
-          <ServiceHeader 
+          <ServiceHeader
             onBack={handleBackToServices}
             onViewLive={handleViewLive}
             onEdit={() => setIsEditModalOpen(true)}
@@ -170,14 +173,14 @@ export default function VendorServiceDetails() {
           <Row className="g-4">
             {/* Left Column - Service Details & Orders */}
             <Col lg={8}>
-              <ServiceOverviewCard 
+              <ServiceOverviewCard
                 service={service}
                 activeOrders={activeOrders.length}
                 completedOrders={completedOrders.length}
                 netEarnings={performanceMetrics.netEarnings}
               />
 
-              <OrderManagementCard 
+              <OrderManagementCard
                 activeOrders={activeOrders}
                 completedOrders={completedOrders}
                 cancelledOrders={cancelledOrders}
@@ -186,7 +189,7 @@ export default function VendorServiceDetails() {
 
             {/* Right Column - Performance Stats */}
             <Col lg={4}>
-              <PerformanceStatsCard 
+              <PerformanceStatsCard
                 views={performanceMetrics.views}
                 netEarnings={performanceMetrics.netEarnings}
                 pendingRevenue={performanceMetrics.pendingRevenue}
@@ -196,10 +199,10 @@ export default function VendorServiceDetails() {
           </Row>
 
           {/* Edit Service Modal */}
-          <AddServiceModal 
-            open={isEditModalOpen} 
-            onOpenChange={setIsEditModalOpen} 
-            editService={service} 
+          <AddServiceModal
+            open={isEditModalOpen}
+            onOpenChange={setIsEditModalOpen}
+            editService={service}
           />
         </Container>
       </div>
@@ -266,25 +269,25 @@ export default function VendorServiceDetails() {
 // Header Component
 const ServiceHeader = ({ onBack, onViewLive, onEdit }) => (
   <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
-    <Button 
-      variant="white" 
+    <Button
+      variant="white"
       onClick={onBack}
       className="shadow-sm border rounded-3 text-muted px-3 py-2 d-flex align-items-center fit-content"
     >
       <ArrowLeft size={16} className="me-2" /> Back to Services
     </Button>
-    
+
     <div className="d-flex gap-2 flex-wrap">
-      <Button 
-        variant="white" 
+      <Button
+        variant="white"
         className="shadow-sm border rounded-3 px-3 py-2 d-flex align-items-center text-dark fw-semibold"
         onClick={onViewLive}
       >
         <Eye size={16} className="me-2 text-primary" /> View Live
       </Button>
 
-      <Button 
-        variant="dark" 
+      <Button
+        variant="dark"
         className="shadow-sm border-0 rounded-3 px-4 py-2 d-flex align-items-center bg-navy"
         onClick={onEdit}
       >
@@ -300,49 +303,49 @@ const ServiceOverviewCard = ({ service, activeOrders, completedOrders, netEarnin
     <Card.Body className="p-4 p-md-5">
       {/* Service Header */}
       <div className="d-flex align-items-center justify-content-between mb-3">
-        <Badge 
-          bg="primary" 
+        <Badge
+          bg="primary"
           className="bg-opacity-10 text-primary border-0 px-3 py-1 rounded-pill x-small fw-bold"
         >
           {service.category}
         </Badge>
         <div className="text-warning d-flex align-items-center">
-          <Star size={14} className="fill-warning me-1" /> 
+          <Star size={14} className="fill-warning me-1" />
           <span className="fw-bold small">5.0</span>
         </div>
       </div>
-      
+
       {/* Service Title */}
       <h1 className="fw-bold text-dark mb-4 fs-2">{service.title}</h1>
-      
+
       {/* Stats Cards */}
       <Row className="g-3">
-        <StatCard 
-          icon={<Zap size={18} className="text-primary"/>} 
-          label="Unit Price" 
-          value={`$${service.price}`} 
+        <StatCard
+          icon={<Zap size={18} className="text-primary" />}
+          label="Unit Price"
+          value={`$${service.price}`}
         />
-        <StatCard 
-          icon={<ShoppingBag size={18} className="text-warning"/>} 
-          label="Active Orders" 
-          value={activeOrders} 
+        <StatCard
+          icon={<ShoppingBag size={18} className="text-warning" />}
+          label="Active Orders"
+          value={activeOrders}
         />
-        <StatCard 
-          icon={<PackageCheck size={18} className="text-success"/>} 
-          label="Completed" 
-          value={completedOrders} 
+        <StatCard
+          icon={<PackageCheck size={18} className="text-success" />}
+          label="Completed"
+          value={completedOrders}
         />
-        <StatCard 
-          icon={<DollarSign size={18} className="text-info"/>} 
-          label="Revenue" 
-          value={`$${netEarnings}`} 
+        <StatCard
+          icon={<DollarSign size={18} className="text-info" />}
+          label="Revenue"
+          value={`$${netEarnings}`}
         />
       </Row>
 
       {/* Description Section */}
       <div className="mt-5 pt-4 border-top">
         <div className="d-flex align-items-center text-muted mb-2">
-          <FileText size={14} className="me-2" /> 
+          <FileText size={14} className="me-2" />
           <span className="fw-bold x-small text-uppercase">Service Description</span>
         </div>
         <p className="text-secondary mb-0 small">
@@ -371,7 +374,7 @@ const OrderManagementCard = ({ activeOrders, completedOrders, cancelledOrders })
       <h5 className="fw-bold mb-4 d-flex align-items-center">
         <ListFilter size={20} className="me-2 text-primary" /> Order Management
       </h5>
-      
+
       <Tabs defaultActiveKey="active" className="modern-tabs border-0 mb-4">
         <Tab eventKey="active" title={`Active (${activeOrders.length})`}>
           <OrderListTable orders={activeOrders} statusType="active" />
@@ -389,6 +392,10 @@ const OrderManagementCard = ({ activeOrders, completedOrders, cancelledOrders })
 
 // Order List Table Component
 const OrderListTable = ({ orders, statusType }) => {
+  const navigate = useNavigate(); // ✅ Fix: defined navigate
+  const { user } = useAuth(); // ✅ Fix: needed for chat
+  const [loadingChatId, setLoadingChatId] = useState(null);
+
   if (orders.length === 0) {
     return (
       <div className="text-center py-5 border rounded-4 bg-white mt-2">
@@ -405,6 +412,26 @@ const OrderListTable = ({ orders, statusType }) => {
       case 'cancelled': return 'danger';
       case 'pending': return 'warning';
       default: return 'secondary';
+    }
+  };
+
+  const handleChat = async (order) => {
+    if (!user?.uid || loadingChatId === order.id) return;
+    setLoadingChatId(order.id);
+
+    try {
+      const conversationId = await chatService.getOrCreateConversation(
+        order.client_id,
+        user.uid,
+        order.service_id,
+        order.service_name || 'Service'
+      );
+      navigate(`/messages/${conversationId}`);
+    } catch (error) {
+      console.error("Failed to open chat:", error);
+      toast.error("Could not open chat");
+    } finally {
+      setLoadingChatId(null);
     }
   };
 
@@ -427,7 +454,7 @@ const OrderListTable = ({ orders, statusType }) => {
                   #{order.id.slice(0, 8).toUpperCase()}
                 </div>
                 <div className="text-muted x-small d-flex align-items-center mt-1">
-                  <Calendar size={12} className="me-1" /> 
+                  <Calendar size={12} className="me-1" />
                   {order.formattedDate}
                 </div>
               </td>
@@ -438,8 +465,8 @@ const OrderListTable = ({ orders, statusType }) => {
                   </div>
                   <div>
                     <div className="fw-bold text-dark">{order.clientName}</div>
-                    <Badge 
-                      bg={getStatusBadgeColor(order.status)} 
+                    <Badge
+                      bg={getStatusBadgeColor(order.status)}
                       className="border fw-normal x-small"
                     >
                       {order.status?.toUpperCase()}
@@ -449,13 +476,15 @@ const OrderListTable = ({ orders, statusType }) => {
               </td>
               <td className="fw-bold text-dark">${order.total_amount || 0}</td>
               <td className="text-end">
-                <Button 
-                  variant="outline-primary" 
-                  size="sm" 
+                <Button
+                  variant="outline-primary"
+                  size="sm"
                   className="rounded-pill px-3 shadow-none"
-                  onClick={() => navigate(`/messages/${order.client_id}`)}
+                  onClick={() => handleChat(order)}
+                  disabled={loadingChatId === order.id}
                 >
-                  <MessageSquare size={14} className="me-1" /> Chat
+                  <MessageSquare size={14} className="me-1" />
+                  {loadingChatId === order.id ? '...' : 'Chat'}
                 </Button>
               </td>
             </tr>
@@ -473,24 +502,24 @@ const PerformanceStatsCard = ({ views, netEarnings, pendingRevenue, totalRevenue
       <h5 className="fw-bold mb-4 d-flex align-items-center">
         <BarChart3 size={20} className="me-2 text-primary" /> Performance
       </h5>
-      
-      <DetailRow 
-        label="Listing Views" 
-        value={views.toLocaleString()} 
-        icon={<Globe size={14} />} 
+
+      <DetailRow
+        label="Listing Views"
+        value={views.toLocaleString()}
+        icon={<Globe size={14} />}
       />
-      <DetailRow 
-        label="Net Earnings" 
-        value={`$${netEarnings}`} 
-        isGreen 
+      <DetailRow
+        label="Net Earnings"
+        value={`$${netEarnings}`}
+        isGreen
       />
-      <DetailRow 
-        label="Pending Revenue" 
-        value={`$${pendingRevenue}`} 
+      <DetailRow
+        label="Pending Revenue"
+        value={`$${pendingRevenue}`}
       />
-      <DetailRow 
-        label="Total Revenue" 
-        value={`$${totalRevenue}`} 
+      <DetailRow
+        label="Total Revenue"
+        value={`$${totalRevenue}`}
         className="border-top pt-3 mt-3 fw-bold"
       />
     </Card.Body>

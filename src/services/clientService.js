@@ -30,11 +30,38 @@ export const clientService = {
     },
 
     async updateClientProfile(uid, data) {
-        const clientRef = doc(db, 'clients', uid);
+        const clientRef = doc(db, 'client_profiles', uid);
         const updateData = {
             ...data,
             updated_at: Timestamp.now()
         };
         await updateDoc(clientRef, updateData);
+    },
+
+    async getOrCreateClientProfile(user) {
+        if (!user || (!user.uid && !user.id)) throw new Error("Invalid user object");
+        const uid = user.uid || user.id;
+
+        // Use 'client_profiles' collection as requested
+        const profileRef = doc(db, 'client_profiles', uid);
+        const profileSnap = await getDoc(profileRef);
+
+        if (profileSnap.exists()) {
+            return profileSnap.data();
+        }
+
+        // Create new profile
+        const newProfile = {
+            uid,
+            name: user.displayName || user.name || '',
+            email: user.email || '',
+            phone: '',
+            avatar: user.photoURL || '',
+            created_at: Timestamp.now(),
+            updated_at: Timestamp.now()
+        };
+
+        await setDoc(profileRef, newProfile);
+        return newProfile;
     }
 };

@@ -51,69 +51,82 @@ const plans = [
 
 export default function Pricing() {
     return (
-        <section id="pricing" className="section-padding bg-white">
-            <Container>
+        <section id="pricing" className="py-5" style={{ background: '#F8F9FA' }}>
+            <Container className="py-5">
                 <div className="text-center mb-5">
-                    <h2 className="fw-bold mb-3" style={{ color: '#404145', fontSize: '2.5rem' }}>
+                    <h2 className="fw-bold mb-3" style={{ color: '#0A2540', fontSize: '2.75rem', letterSpacing: '-0.02em' }}>
                         Simple, transparent pricing
                     </h2>
-                    <p className="text-muted fs-5">Choose the plan that's right for you</p>
+                    <p className="text-muted fs-5 mx-auto" style={{ maxWidth: '600px' }}>
+                        No hidden fees. Choose the plan that scales with your business needs.
+                    </p>
                 </div>
 
-                <Row className="g-4 justify-content-center align-items-center">
+                <Row className="g-4 justify-content-center align-items-stretch">
                     {plans.map((plan) => (
-                        <Col md={6} lg={4} key={plan.name}>
+                        <Col md={6} lg={4} key={plan.name} className="d-flex">
                             <Card
-                                className={`h-100 position-relative ${plan.highlighted ? 'shadow-lg' : 'shadow-sm'}`}
+                                className={`w-100 border-0 shadow-sm overflow-hidden`}
                                 style={{
-                                    border: plan.highlighted ? '2px solid #00B67A' : '1px solid #E4E5E7',
-                                    borderRadius: '16px',
+                                    borderRadius: '20px',
                                     transition: 'all 0.3s ease',
-                                    transform: plan.highlighted ? 'scale(1.05)' : 'scale(1)'
+                                    transform: plan.highlighted ? 'scale(1.02)' : 'scale(1)',
+                                    zIndex: plan.highlighted ? 1 : 0,
+                                    border: plan.highlighted ? '2px solid #00B67A' : '1px solid transparent'
                                 }}
                             >
                                 {plan.badge && (
                                     <div
-                                        className="position-absolute top-0 start-50 translate-middle px-3 py-1 rounded-pill fw-semibold"
+                                        className="position-absolute top-0 end-0 px-4 py-2 fw-bold shadow-sm"
                                         style={{
                                             background: '#00B67A',
                                             color: 'white',
-                                            fontSize: '0.75rem'
+                                            fontSize: '0.75rem',
+                                            borderRadius: '0 0 0 20px',
+                                            letterSpacing: '0.05em'
                                         }}
                                     >
-                                        <Star size={12} fill="white" className="me-1" />
-                                        {plan.badge}
+                                        {plan.badge.toUpperCase()}
                                     </div>
                                 )}
-                                <Card.Body className="p-5">
-                                    <h3 className="h5 fw-bold mb-2" style={{ color: '#404145' }}>{plan.name}</h3>
-                                    <p className="text-muted small mb-4">{plan.description}</p>
+                                <Card.Body className="p-5 d-flex flex-column">
                                     <div className="mb-4">
-                                        <span className="display-5 fw-bold" style={{ color: '#404145' }}>{plan.price}</span>
-                                        {plan.period && <span className="text-muted fs-6">{plan.period}</span>}
+                                        <h3 className="h4 fw-bold mb-2" style={{ color: '#0A2540' }}>{plan.name}</h3>
+                                        <p className="text-muted fs-6" style={{ height: '3rem' }}>{plan.description}</p>
                                     </div>
-                                    <ul className="list-unstyled mb-4">
+                                    <div className="mb-5 pb-3 border-bottom">
+                                        <span className="display-4 fw-bold" style={{ color: '#0A2540' }}>{plan.price}</span>
+                                        {plan.period && <span className="text-muted fs-5 fw-medium">{plan.period}</span>}
+                                    </div>
+                                    <ul className="list-unstyled mb-auto">
                                         {plan.features.map((feature) => (
                                             <li key={feature} className="mb-3 d-flex align-items-start">
-                                                <Check size={18} style={{ color: '#00B67A' }} className="me-2 flex-shrink-0 mt-1" />
-                                                <span style={{ color: '#62646A' }}>{feature}</span>
+                                                <div
+                                                    className="me-3 mt-1 d-flex align-items-center justify-content-center rounded-circle"
+                                                    style={{ width: 22, height: 22, background: plan.highlighted ? '#00B67A15' : '#F0F2F5' }}
+                                                >
+                                                    <Check size={14} style={{ color: '#00B67A' }} strokeWidth={3} />
+                                                </div>
+                                                <span className="fw-medium" style={{ color: '#404145' }}>{feature}</span>
                                             </li>
                                         ))}
                                     </ul>
-                                    <Link to="/signup" className="d-block">
-                                        <Button
-                                            className="w-100 py-3 fw-semibold"
-                                            style={{
-                                                background: plan.highlighted ? '#00B67A' : 'white',
-                                                color: plan.highlighted ? 'white' : '#0A2540',
-                                                border: plan.highlighted ? 'none' : '2px solid #E4E5E7',
-                                                borderRadius: '8px',
-                                                fontSize: '1rem'
-                                            }}
-                                        >
-                                            {plan.cta}
-                                        </Button>
-                                    </Link>
+                                    <div className="mt-5">
+                                        <Link to="/signup" className="text-decoration-none">
+                                            <Button
+                                                className="w-100 py-3 fw-bold border-0"
+                                                style={{
+                                                    background: plan.highlighted ? '#00B67A' : '#F0F2F5',
+                                                    color: plan.highlighted ? 'white' : '#0A2540',
+                                                    borderRadius: '12px',
+                                                    fontSize: '1rem',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                            >
+                                                {plan.cta}
+                                            </Button>
+                                        </Link>
+                                    </div>
                                 </Card.Body>
                             </Card>
                         </Col>

@@ -5,7 +5,10 @@ import {
     getDoc,
     collection,
     getCountFromServer,
-    serverTimestamp
+    serverTimestamp,
+    getDocs,
+    query,
+    orderBy
 } from 'firebase/firestore';
 import { db } from 'lib/firebase';
 
@@ -82,5 +85,26 @@ export const getSavedServicesCount = async (uid) => {
     } catch (error) {
         console.error('Error getting saved services count:', error);
         return 0;
+    }
+};
+
+/**
+ * Gets all saved services for a user
+ * @param {string} uid - User ID
+ * @returns {Promise<Array>}
+ */
+export const getSavedServices = async (uid) => {
+    if (!uid) return [];
+    try {
+        const collRef = collection(db, 'users', uid, 'saved_services');
+        const q = query(collRef, orderBy('saved_at', 'desc'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+    } catch (error) {
+        console.error('Error getting saved services:', error);
+        return [];
     }
 };

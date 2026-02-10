@@ -21,7 +21,7 @@ export default function Orders() {
   }
 
   return (
-    <Layout>
+    <Layout footerVariant="dashboard">
       <Container className="py-5">
         <div className="mb-5">
           <Link to="/dashboard" className="d-flex align-items-center text-muted text-decoration-none small mb-2 hover-text-dark">
